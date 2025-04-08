@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 type UrlManagementCardProps = {
   iframeUrl: string;
@@ -63,6 +63,31 @@ export const UrlManagementCard: React.FC<UrlManagementCardProps> = ({
     }
   };
 
+  const handleClearUrl = async () => {
+    setSubmitting(true);
+    
+    try {
+      await setIframeUrl("");
+      setUrlInput("");
+      
+      toast({
+        title: "تم بنجاح",
+        description: "تم حذف الرابط وعرض الصفحة البيضاء",
+      });
+      
+      navigate("/");
+    } catch (error) {
+      console.error("Error clearing URL:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حذف الرابط",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -86,6 +111,15 @@ export const UrlManagementCard: React.FC<UrlManagementCardProps> = ({
               <Button type="submit" disabled={isLoading || submitting}>
                 {(isLoading || submitting) ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
                 تطبيق
+              </Button>
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={handleClearUrl} 
+                disabled={isLoading || submitting || !iframeUrl}
+                title="حذف الرابط"
+              >
+                {submitting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
               </Button>
             </div>
             <p className="text-sm text-gray-500">
