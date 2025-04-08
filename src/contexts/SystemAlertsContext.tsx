@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -32,7 +31,7 @@ interface SystemAlertsContextProps {
   fetchNotifications: () => Promise<void>;
   createBreakTimer: (timer: Omit<BreakTimer, 'id'>) => Promise<boolean>;
   createNotification: (notification: Omit<Notification, 'id'>) => Promise<boolean>;
-  closeBreakTimer: () => Promise<void>;
+  closeBreakTimer: (id?: string) => Promise<void>;
   closeNotification: (id: string) => Promise<void>;
 }
 
@@ -168,12 +167,57 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         .from('break_timer')
         .update({ is_active: false })
         .eq('id', id);
+        
+      // Refresh the active timers list after deactivation
+      await fetchActiveBreakTimers();
     } catch (error) {
       console.error("Error deactivating break timer:", error);
     }
   };
 
-  const closeBreakTimer = async () => {
+  const closeBreakTimer = async (id?: string) => {
+    // If an ID is provided, close that specific timer
+    if (id) {
+      try {
+        // Check if this timer is also the current break timer
+        if (breakTimer && breakTimer.id === id) {
+          setBreakTimer(null);
+        }
+        
+        // Get the timer details to check if it's recurring
+        const { data } = await supabase
+          .from('break_timer')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (data && data.is_recurring) {
+          // For recurring timers, we just hide it until tomorrow
+          // but keep it active in the database
+          toast({
+            title: "تم الإغلاق",
+            description: "تم إغلاق مؤقت الراحة وسيظهر مرة أخرى في نفس الوقت غدا",
+          });
+          
+          // Filter the timer from the active timers list in UI only
+          setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
+          return;
+        }
+        
+        // For non-recurring timers, deactivate in the database
+        await deactivateBreakTimer(id);
+        
+        toast({
+          title: "تم الإغلاق",
+          description: "تم إغلاق مؤقت الراحة بنجاح",
+        });
+      } catch (error) {
+        console.error("Error closing break timer:", error);
+      }
+      return;
+    }
+    
+    // Handle the case when no ID is provided (closing the current break timer)
     if (!breakTimer) return;
     
     try {
@@ -217,7 +261,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // Fix 3: Avoid potential circular reference by being explicit about the timer parameter type
   const createBreakTimer = async (timer: {
     title: string;
     start_time: string;
@@ -266,7 +309,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // Fix 4: Similar explicit typing for notification to avoid potential circular reference
   const createNotification = async (notification: {
     title: string;
     content?: string;
@@ -301,7 +343,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // Fetch initial data and set up periodic refresh
   useEffect(() => {
     const loadData = async () => {
       await fetchBreakTimer();

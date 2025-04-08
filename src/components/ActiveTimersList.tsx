@@ -8,6 +8,11 @@ import { Clock, Trash } from "lucide-react";
 export const ActiveTimersList: React.FC = () => {
   const { activeBreakTimers, closeBreakTimer } = useSystemAlerts();
   
+  // Handle closing a specific timer by ID
+  const handleCloseTimer = (timerId: string) => {
+    closeBreakTimer(timerId);
+  };
+  
   if (activeBreakTimers.length === 0) {
     return (
       <Card>
@@ -39,7 +44,7 @@ export const ActiveTimersList: React.FC = () => {
                 {timer.is_recurring && <span className="ml-2 text-blue-500">(يتكرر يوميا)</span>}
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => closeBreakTimer()}>
+            <Button variant="ghost" size="sm" onClick={() => handleCloseTimer(timer.id)}>
               <Trash className="h-4 w-4" />
             </Button>
           </div>
