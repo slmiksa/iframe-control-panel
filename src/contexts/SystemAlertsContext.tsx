@@ -47,6 +47,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   const [activeNotification, setActiveNotification] = useState<Notification | null>(null);
   const [lastFetchedTime, setLastFetchedTime] = useState<Date>(new Date());
   const [notificationsDismissed, setNotificationsDismissed] = useState<Set<string>>(new Set());
+  const [permanentlyDismissedNotifications, setPermanentlyDismissedNotifications] = useState<Set<string>>(new Set());
 
   // For legacy compatibility
   const breakTimer = activeBreakTimer;
@@ -97,22 +98,30 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
       
       if (notifications && notifications.length > 0) {
-        // Check if this notification has already been dismissed in this session
+        // Check if notification is in our permanently dismissed list
         const notification = notifications[0];
-        if (!notificationsDismissed.has(notification.id)) {
-          // Map database notification to our type
-          setActiveNotification({
-            id: notification.id,
-            title: notification.title,
-            content: notification.content,
-            image_url: notification.image_url,
-            image_path: notification.image_url, // For compatibility with components expecting image_path
-            start_time: notification.start_time,
-            end_time: notification.end_time,
-            is_active: notification.is_active
-          });
+        
+        // If this notification has already been permanently dismissed, don't show it
+        if (!permanentlyDismissedNotifications.has(notification.id)) {
+          // Check if this notification has already been dismissed in this session
+          if (!notificationsDismissed.has(notification.id)) {
+            // Map database notification to our type
+            setActiveNotification({
+              id: notification.id,
+              title: notification.title,
+              content: notification.content,
+              image_url: notification.image_url,
+              image_path: notification.image_url, // For compatibility with components expecting image_path
+              start_time: notification.start_time,
+              end_time: notification.end_time,
+              is_active: notification.is_active
+            });
+          } else {
+            // If the notification was dismissed in this session, keep it null
+            setActiveNotification(null);
+          }
         } else {
-          // If the notification was dismissed in this session, keep it null
+          // Don't show permanently dismissed notifications
           setActiveNotification(null);
         }
       } else {
@@ -123,7 +132,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error("Error in fetchActiveBreakTimers:", error);
     }
-  }, [notificationsDismissed]);
+  }, [notificationsDismissed, permanentlyDismissedNotifications]);
 
   // New method to fetch upcoming break timers
   const fetchUpcomingBreakTimers = useCallback(async () => {
@@ -167,8 +176,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   
   const dismissNotification = useCallback(() => {
     if (activeNotification) {
-      // Add the dismissed notification ID to the set of dismissed notifications
+      // Add dismissed notification to both session and permanent storage
       setNotificationsDismissed(prev => new Set(prev).add(activeNotification.id));
+      
+      // Also add to permanently dismissed notifications to prevent 
+      // it from showing up again even after the end time
+      setPermanentlyDismissedNotifications(prev => new Set(prev).add(activeNotification.id));
     }
     setActiveNotification(null);
   }, [activeNotification]);

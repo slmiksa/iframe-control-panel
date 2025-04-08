@@ -70,9 +70,9 @@ export const NotificationModal: React.FC = () => {
   
   return (
     <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
-      <DialogContent className="sm:max-w-[900px] md:max-w-[1100px] w-[98vw] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-3xl font-bold mb-4">{activeNotification.title}</DialogTitle>
+      <DialogContent className="sm:max-w-[900px] md:max-w-[1100px] w-[98vw] max-h-[90vh] overflow-y-auto flex flex-col">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-4xl font-bold mb-6">{activeNotification.title}</DialogTitle>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -85,7 +85,7 @@ export const NotificationModal: React.FC = () => {
         </DialogHeader>
         
         {imageUrl && (
-          <div className="mb-8 w-full">
+          <div className="my-8 w-full max-w-[800px] mx-auto">
             <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg overflow-hidden shadow-lg">
               <img 
                 src={imageUrl} 
@@ -96,12 +96,12 @@ export const NotificationModal: React.FC = () => {
           </div>
         )}
         
-        <DialogDescription className="text-xl leading-relaxed mb-6">
+        <DialogDescription className="text-2xl leading-relaxed my-8 text-center px-4">
           {activeNotification.content}
         </DialogDescription>
         
-        <div className="mt-6 flex justify-end">
-          <Button onClick={handleDismiss} size="lg" className="px-8 text-lg">تم</Button>
+        <div className="mt-6 flex justify-center">
+          <Button onClick={handleDismiss} size="lg" className="px-12 py-6 text-xl">تم</Button>
         </div>
       </DialogContent>
     </Dialog>
