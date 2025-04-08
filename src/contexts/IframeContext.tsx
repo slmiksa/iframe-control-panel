@@ -5,12 +5,20 @@ import { Database } from "@/integrations/supabase/types";
 
 interface IframeContextProps {
   iframeUrl: string;
-  setIframeUrl: (url: string) => Promise<void>; // Changed to async function
+  setIframeUrl: (url: string) => Promise<void>; 
   isLoggedIn: boolean;
   setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
   login: (username: string, password: string) => boolean;
   isLoading: boolean;
 }
+
+// Create a more specific type for the iframe_urls table rows
+type IframeUrl = {
+  id: string;
+  url: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
 
 const IframeContext = createContext<IframeContextProps | undefined>(undefined);
 
@@ -23,16 +31,19 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchIframeUrl = async () => {
       try {
+        // Use type casting to fix the TypeScript error
         const { data, error } = await supabase
           .from('iframe_urls')
-          .select('url')
+          .select('*')
           .limit(1)
           .single();
           
         if (error) {
           console.error("Error fetching iframe URL:", error);
         } else if (data) {
-          setIframeUrlState(data.url);
+          // Use type assertion to access the url property
+          const urlData = data as IframeUrl;
+          setIframeUrlState(urlData.url);
         }
       } catch (error) {
         console.error("Error:", error);
@@ -60,18 +71,24 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      // Add null check for idData before proceeding
       if (idData) {
+        // Type assertion for idData
+        const typedIdData = idData as { id: string };
+        
         // Update the URL
         const { error } = await supabase
           .from('iframe_urls')
           .update({ url })
-          .eq('id', idData.id);
+          .eq('id', typedIdData.id);
 
         if (error) {
           console.error("Error updating iframe URL:", error);
         } else {
           setIframeUrlState(url);
         }
+      } else {
+        console.error("No iframe URL record found to update");
       }
     } catch (error) {
       console.error("Error:", error);
