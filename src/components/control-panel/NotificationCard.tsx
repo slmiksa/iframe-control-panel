@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
           
           console.log("Uploading image:", safeFileName);
           
+          // تأكد من أن المعرف الخاص بقاعدة البيانات صحيح
           const { data, error } = await supabase.storage
             .from('notifications')
             .upload(safeFileName, notificationImage, {
@@ -122,6 +124,16 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
         }
       }
 
+      // تأكد من أن البيانات تنتقل بشكل صحيح إلى قاعدة البيانات
+      console.log("Sending notification data:", {
+        title: notificationTitle,
+        content: notificationContent,
+        image_url: imageUrl,
+        start_time: notificationStart.toISOString(),
+        end_time: notificationEnd.toISOString(),
+        is_active: true
+      });
+
       const success = await createNotification({
         title: notificationTitle,
         content: notificationContent,
@@ -139,6 +151,12 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
         setNotificationTitle("");
         setNotificationContent("");
         setNotificationImage(null);
+      } else {
+        toast({
+          title: "خطأ",
+          description: "فشل في إنشاء الإشعار، يرجى المحاولة مرة أخرى",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Error in handleCreateNotification:", error);

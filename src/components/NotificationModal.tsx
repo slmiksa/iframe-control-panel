@@ -13,16 +13,22 @@ export const NotificationModal: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   
-  // Ensure bucket exists when component mounts
+  // إنشاء المجلد عند تحميل المكون
   useEffect(() => {
-    createNotificationsBucket().catch(err => {
-      console.error("Failed to prepare notifications bucket:", err);
-    });
+    async function setupBucket() {
+      try {
+        console.log("Setting up notifications bucket in NotificationModal");
+        await createNotificationsBucket();
+      } catch (err) {
+        console.error("Failed to prepare notifications bucket:", err);
+      }
+    }
+    setupBucket();
   }, []);
 
   useEffect(() => {
     if (notifications.length > 0) {
-      // Get the first active notification that is currently valid based on time
+      // الحصول على أول إشعار نشط وصالح بناءً على الوقت
       const now = new Date();
       const validNotifications = notifications.filter(notification => {
         const startTime = new Date(notification.start_time);
@@ -30,13 +36,16 @@ export const NotificationModal: React.FC = () => {
         return now >= startTime && now <= endTime && notification.is_active;
       });
       
+      console.log("Valid notifications count:", validNotifications.length);
+      
       if (validNotifications.length > 0) {
         const notification = validNotifications[0];
+        console.log("Selected notification:", notification);
         setCurrentNotification(notification);
         setOpen(true);
         setImageError(false);
         
-        // Get public URL for image if there is one
+        // الحصول على الرابط العام للصورة إذا كانت موجودة
         if (notification.image_url) {
           getPublicImageUrl(notification.image_url);
         } else {
@@ -65,10 +74,12 @@ export const NotificationModal: React.FC = () => {
         return;
       }
       
-      // Get the public URL
+      // الحصول على الرابط العام
       const { data } = supabase.storage
         .from('notifications')
         .getPublicUrl(path);
+      
+      console.log("Public URL response:", data);
       
       if (data && data.publicUrl) {
         console.log("Image public URL:", data.publicUrl);  

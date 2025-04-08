@@ -5,7 +5,7 @@ export const createNotificationsBucket = async () => {
   try {
     console.log("Checking if notifications bucket exists...");
     
-    // Check if the notifications bucket exists
+    // التحقق مما إذا كان مجلد الإشعارات موجود
     const { data: buckets, error: bucketsError } = await supabase
       .storage
       .listBuckets();
@@ -18,7 +18,7 @@ export const createNotificationsBucket = async () => {
     const notificationsBucketExists = buckets?.some(bucket => bucket.name === 'notifications');
     console.log("Notifications bucket exists:", notificationsBucketExists);
     
-    // If the bucket doesn't exist, try to create it
+    // إذا لم يكن المجلد موجودًا، فحاول إنشائه
     if (!notificationsBucketExists) {
       console.log("Creating notifications bucket...");
       
@@ -26,14 +26,14 @@ export const createNotificationsBucket = async () => {
         const { error: createError } = await supabase
           .storage
           .createBucket('notifications', {
-            public: true,
-            fileSizeLimit: 10485760 // 10MB limit
+            public: true, // ضمان أن المجلد عام
+            fileSizeLimit: 10485760 // حد 10 ميجابايت
           });
         
         if (createError) {
-          // If we get a policy error, the bucket likely exists but with RLS issues
           console.error('Error creating notifications bucket:', createError);
           
+          // إذا حصلنا على خطأ سياسة، من المحتمل أن المجلد موجود ولكن مع مشاكل في الوصول
           if (createError.message.includes('row-level security') || 
               createError.message.includes('permission denied')) {
             console.log('RLS policy error. The bucket exists but is not accessible for creation.');
@@ -46,11 +46,11 @@ export const createNotificationsBucket = async () => {
         }
       } catch (createBucketError) {
         console.error('Error in bucket creation attempt:', createBucketError);
-        // Continue execution as we'll try to use the public URL anyway
+        // استمر في التنفيذ حيث سنحاول استخدام عنوان URL العام على أي حال
       }
     }
     
-    // Test if we can get a public URL
+    // اختبار ما إذا كان يمكننا الحصول على عنوان URL عام
     try {
       const { data } = supabase.storage
         .from('notifications')
@@ -60,14 +60,29 @@ export const createNotificationsBucket = async () => {
       return true;
     } catch (publicUrlError) {
       console.error('Error generating public URL:', publicUrlError);
-      // Continue execution anyway as uploads might still work
+      // استمر في التنفيذ على أي حال حيث قد لا تزال عمليات التحميل تعمل
+    }
+    
+    // تحقق من أذونات المجلد
+    try {
+      console.log("Verifying bucket permissions...");
+      const { data: policyData, error: policyError } = await supabase
+        .rpc('get_bucket_public_status', { bucket_name: 'notifications' });
+      
+      if (policyError) {
+        console.error('Error checking bucket policy:', policyError);
+      } else {
+        console.log('Bucket public status:', policyData);
+      }
+    } catch (policyCheckError) {
+      console.error('Error in policy check:', policyCheckError);
     }
     
     return true;
   } catch (error) {
     console.error('Unexpected error creating storage bucket:', error);
-    // Don't throw here, just log the error and return false
-    // This allows the app to continue functioning even if bucket creation fails
+    // لا ترمي هنا، فقط قم بتسجيل الخطأ وإرجاع false
+    // هذا يسمح للتطبيق بالاستمرار في العمل حتى إذا فشل إنشاء المجلد
     return false;
   }
 };
