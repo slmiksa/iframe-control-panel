@@ -217,6 +217,8 @@ const ControlPanel = () => {
         description: isRecurring ? "تم إنشاء مؤقت متكرر بنجاح" : "تم إنشاء مؤقت البريك بنجاح"
       });
       setBreakTimerTitle("");
+      
+      fetchActiveBreakTimers();
     }
   };
 

@@ -1,16 +1,31 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Trash } from "lucide-react";
 
 export const ActiveTimersList: React.FC = () => {
-  const { activeBreakTimers, closeBreakTimer } = useSystemAlerts();
+  const { activeBreakTimers, closeBreakTimer, fetchActiveBreakTimers } = useSystemAlerts();
+  
+  // تحديث قائمة المؤقتات النشطة عند تحميل المكون
+  useEffect(() => {
+    fetchActiveBreakTimers();
+    
+    // إعادة تحميل المؤقتات النشطة كل 10 ثوان
+    const interval = setInterval(() => {
+      fetchActiveBreakTimers();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [fetchActiveBreakTimers]);
   
   // Handle closing a specific timer by ID
   const handleCloseTimer = (timerId: string) => {
-    closeBreakTimer(timerId);
+    closeBreakTimer(timerId).then(() => {
+      // إعادة تحميل القائمة بعد إغلاق المؤقت مباشرة
+      fetchActiveBreakTimers();
+    });
   };
   
   if (activeBreakTimers.length === 0) {
