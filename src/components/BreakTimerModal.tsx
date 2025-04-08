@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { Clock, Timer } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog";
 
 export const BreakTimerModal: React.FC = () => {
   const { breakTimer, closeBreakTimer } = useSystemAlerts();
@@ -14,6 +16,8 @@ export const BreakTimerModal: React.FC = () => {
   } | null>(null);
   const [open, setOpen] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const [isFinished, setIsFinished] = useState(false);
+  const [finishTimeoutId, setFinishTimeoutId] = useState<NodeJS.Timeout | null>(null);
   
   // List of break time tips for employees
   const breakTips = [
@@ -43,15 +47,26 @@ export const BreakTimerModal: React.FC = () => {
   useEffect(() => {
     if (breakTimer) {
       setOpen(true);
+      setIsFinished(false);
+      
+      // Clear any existing timeout
+      if (finishTimeoutId) {
+        clearTimeout(finishTimeoutId);
+        setFinishTimeoutId(null);
+      }
       
       // Calculate the initial time remaining
       const calculateRemaining = () => {
         const now = new Date();
         const endTime = new Date(breakTimer.end_time);
         
-        // If we're past the end time, close the timer
+        // If we're past the end time, show finish message
         if (now > endTime) {
-          closeBreakTimer();
+          setIsFinished(true);
+          const timeout = setTimeout(() => {
+            closeBreakTimer();
+          }, 20 * 60 * 1000); // 20 minutes in milliseconds
+          setFinishTimeoutId(timeout);
           return null;
         }
         
@@ -72,24 +87,38 @@ export const BreakTimerModal: React.FC = () => {
         setTipIndex(prevIndex => (prevIndex + 1) % breakTips.length);
       }, 8000);
 
-      return () => clearInterval(tipsInterval);
+      return () => {
+        clearInterval(tipsInterval);
+        if (finishTimeoutId) {
+          clearTimeout(finishTimeoutId);
+        }
+      };
     } else {
       setOpen(false);
       setTimeRemaining(null);
+      setIsFinished(false);
+      if (finishTimeoutId) {
+        clearTimeout(finishTimeoutId);
+        setFinishTimeoutId(null);
+      }
     }
-  }, [breakTimer, closeBreakTimer, breakTips.length]);
+  }, [breakTimer, closeBreakTimer, breakTips.length, finishTimeoutId]);
 
   // Update the time every second
   useEffect(() => {
-    if (!breakTimer || !open) return;
+    if (!breakTimer || !open || isFinished) return;
     
     const calculateRemaining = () => {
       const now = new Date();
       const endTime = new Date(breakTimer.end_time);
       
-      // If we're past the end time, close the timer
+      // If we're past the end time, show finish message
       if (now > endTime) {
-        closeBreakTimer();
+        setIsFinished(true);
+        const timeout = setTimeout(() => {
+          closeBreakTimer();
+        }, 20 * 60 * 1000); // 20 minutes in milliseconds
+        setFinishTimeoutId(timeout);
         return null;
       }
       
@@ -111,57 +140,78 @@ export const BreakTimerModal: React.FC = () => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [breakTimer, open, closeBreakTimer]);
+  }, [breakTimer, open, closeBreakTimer, isFinished]);
 
-  // If no break timer or no remaining time, render nothing
-  if (!breakTimer || !timeRemaining) return null;
+  // If no break timer, render nothing
+  if (!breakTimer) return null;
 
   // Create a wrapper function for the closeBreakTimer to handle React event
   const handleCloseTimer = () => {
     closeBreakTimer();
   };
 
+  // Check if we're in the last 2 minutes
+  const isLastTwoMinutes = timeRemaining && 
+    timeRemaining.hours === 0 && 
+    timeRemaining.minutes < 2;
+
+  // Determine text color class based on time remaining
+  const timerColorClass = isLastTwoMinutes 
+    ? "text-red-500" 
+    : "text-amber-400";
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) closeBreakTimer();
       setOpen(isOpen);
     }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-center">{breakTimer.title}</DialogTitle>
+          <DialogTitle className="text-3xl text-center">{breakTimer.title}</DialogTitle>
         </DialogHeader>
         
-        <div className="flex flex-col items-center justify-center py-6">
-          <div className="flex items-center justify-center mb-6">
-            <Timer className="w-16 h-16 text-amber-400 animate-pulse" />
-          </div>
-          
-          <div className="text-8xl font-bold text-center countdown-timer mb-4 text-amber-400 animate-fade-in" style={{
-            textShadow: "0 0 10px rgba(251, 191, 36, 0.5)",
-            fontFamily: "'Digital-7', monospace"
-          }}>
-            {String(timeRemaining.hours).padStart(2, '0')}:
-            {String(timeRemaining.minutes).padStart(2, '0')}:
-            {String(timeRemaining.seconds).padStart(2, '0')}
-          </div>
-          
-          <div className="text-sm text-gray-500">
-            من {new Date(breakTimer.start_time).toLocaleTimeString()} إلى {new Date(breakTimer.end_time).toLocaleTimeString()}
-          </div>
+        <div className="flex flex-col items-center justify-center py-8">
+          {isFinished ? (
+            <div className="text-center">
+              <div className="text-4xl font-bold text-red-500 mb-4">انتهى وقت البريك</div>
+              <div className="text-2xl text-gray-600">يمكنك العودة للعمل الآن</div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-center mb-8">
+                <Timer className={`w-24 h-24 ${timerColorClass} animate-pulse`} />
+              </div>
+              
+              <div className={`text-9xl font-bold text-center countdown-timer mb-6 ${timerColorClass} animate-fade-in`} style={{
+                textShadow: isLastTwoMinutes 
+                  ? "0 0 15px rgba(239, 68, 68, 0.7)" 
+                  : "0 0 15px rgba(251, 191, 36, 0.5)",
+                fontFamily: "'Digital-7', monospace"
+              }}>
+                {String(timeRemaining?.hours || 0).padStart(2, '0')}:
+                {String(timeRemaining?.minutes || 0).padStart(2, '0')}:
+                {String(timeRemaining?.seconds || 0).padStart(2, '0')}
+              </div>
+              
+              <div className="text-sm text-gray-500 mb-4">
+                من {new Date(breakTimer.start_time).toLocaleTimeString()} إلى {new Date(breakTimer.end_time).toLocaleTimeString()}
+              </div>
 
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <h3 className="text-sm font-medium text-amber-800 mb-2">نصيحة استراحة:</h3>
-            <p className="text-sm text-amber-700 transition-all duration-500 animate-fade-in">
-              {breakTips[tipIndex]}
-            </p>
-          </div>
+              <div className="mt-6 p-5 bg-amber-50 border border-amber-200 rounded-lg w-full max-w-md">
+                <h3 className="text-md font-medium text-amber-800 mb-3">نصيحة استراحة:</h3>
+                <p className="text-lg text-amber-700 transition-all duration-500 animate-fade-in">
+                  {breakTips[tipIndex]}
+                </p>
+              </div>
+            </>
+          )}
         </div>
         
         <DialogFooter className="flex justify-center">
           <Button 
             onClick={handleCloseTimer} 
             variant="outline" 
-            className="px-8 py-2 text-lg border-amber-400 text-amber-700 hover:bg-amber-50"
+            className="px-8 py-3 text-lg border-amber-400 text-amber-700 hover:bg-amber-50"
           >
             إغلاق
           </Button>
