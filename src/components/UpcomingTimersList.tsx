@@ -12,6 +12,8 @@ export const UpcomingTimersList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [stableTimersList, setStableTimersList] = useState([]);
   
   // Update list of upcoming timers when component loads
   useEffect(() => {
@@ -19,23 +21,34 @@ export const UpcomingTimersList: React.FC = () => {
     
     const fetchTimers = async () => {
       try {
-        if (!isRefreshing) {
+        if (!isRefreshing && !hasInitiallyLoaded) {
           setIsLoading(true);
         }
         setError(null);
         await fetchUpcomingBreakTimers();
         console.log("Successfully fetched upcoming timers:", upcomingBreakTimers.length);
+        
+        // Only update the stable list if we have data or if it's the initial load
+        if (upcomingBreakTimers.length > 0 || !hasInitiallyLoaded) {
+          setStableTimersList(upcomingBreakTimers);
+        }
+        
+        // Mark as initially loaded after first successful fetch
+        if (!hasInitiallyLoaded) {
+          setHasInitiallyLoaded(true);
+        }
       } catch (error) {
         console.error("Failed to fetch upcoming timers:", error);
         setError("فشل في تحميل المؤقتات القادمة");
-        // Only show toast for non-refreshing errors to avoid spam
-        if (!isRefreshing) {
+        // Only show toast for initial errors to avoid spam
+        if (!hasInitiallyLoaded && !isRefreshing) {
           toast({
             title: "خطأ في تحميل المؤقتات",
-            description: "فشل في تحميل قائمة المؤقتات القادمة، يرجى المحاولة مرة أخرى",
+            description: "فشل في تحميل قائمة المؤقتات القادمة، سيتم إعادة المحاولة تلقائيًا",
             variant: "destructive"
           });
         }
+        // Even if there's an error, don't reset stable list if we've already loaded successfully before
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -45,15 +58,15 @@ export const UpcomingTimersList: React.FC = () => {
     // Fetch upcoming timers initially
     fetchTimers();
     
-    // Refresh upcoming timers list every 60 seconds (increased from 30s to reduce UI flicker)
+    // Refresh upcoming timers list every 2 minutes (increased from 60s to reduce UI flicker further)
     const interval = setInterval(() => {
       console.log("Refreshing upcoming timers list");
       setIsRefreshing(true);
       fetchTimers();
-    }, 60000);
+    }, 120000); // 2 minutes
     
     return () => clearInterval(interval);
-  }, [fetchUpcomingBreakTimers]);
+  }, [fetchUpcomingBreakTimers, upcomingBreakTimers]);
   
   // Format date to show date and time in a readable format
   const formatDateTime = (dateString: string) => {
@@ -75,19 +88,14 @@ export const UpcomingTimersList: React.FC = () => {
     }
   };
   
-  // Show a stable UI with skeleton loading states
+  // Show a stable UI that doesn't flicker during refreshes
   return (
     <Card>
       <CardHeader>
         <CardTitle>المؤقتات القادمة</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {error ? (
-          <div className="flex flex-col items-center justify-center py-4 text-red-500">
-            <AlertCircle className="mb-2" />
-            <div>{error}</div>
-          </div>
-        ) : isLoading && upcomingBreakTimers.length === 0 ? (
+        {isLoading && !hasInitiallyLoaded ? (
           // Only show loading skeletons on initial load, not on refreshes
           <>
             <div className="flex items-center justify-between border-b pb-2">
@@ -105,13 +113,20 @@ export const UpcomingTimersList: React.FC = () => {
               <Skeleton className="h-4 w-10" />
             </div>
           </>
-        ) : upcomingBreakTimers.length === 0 ? (
+        ) : error && !hasInitiallyLoaded ? (
+          // Only show error message on initial load failures
+          <div className="flex flex-col items-center justify-center py-4 text-red-500">
+            <AlertCircle className="mb-2" />
+            <div>{error}</div>
+          </div>
+        ) : stableTimersList.length === 0 ? (
+          // Show stable "no timers" message
           <div className="text-center py-4 text-gray-500">
             لا توجد مؤقتات مجدولة للمستقبل
           </div>
         ) : (
-          // Display timer list - this doesn't change during refreshes
-          upcomingBreakTimers.map(timer => (
+          // Display stable timer list - this doesn't change during refreshes
+          stableTimersList.map(timer => (
             <div key={timer.id} className="flex items-center justify-between border-b pb-2">
               <div>
                 <div className="font-medium">{timer.title}</div>
@@ -126,6 +141,10 @@ export const UpcomingTimersList: React.FC = () => {
               </div>
             </div>
           ))
+        )}
+        {/* Hidden refresh indicator to avoid UI jumps */}
+        {isRefreshing && hasInitiallyLoaded && (
+          <div className="hidden">Refreshing...</div>
         )}
       </CardContent>
     </Card>
