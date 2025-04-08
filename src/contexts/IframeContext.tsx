@@ -56,9 +56,9 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
           setIframeUrlState(urlRecord.url);
         }
 
-        // Fetch admin users
+        // Fetch admin users - using type assertion to work around the type checking
         const { data: adminData, error: adminError } = await supabase
-          .from('admin_users')
+          .from('admin_users' as any)
           .select('id, username, password');
 
         if (adminError) {
@@ -158,7 +158,7 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
       // Add the new admin
       const { error: insertError } = await supabase
         .from('admin_users' as any)
-        .insert([{ username, password }]);
+        .insert([{ username, password }] as any);
 
       if (insertError) {
         console.error("Error adding admin:", insertError);
