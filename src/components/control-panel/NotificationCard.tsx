@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
   const [isUploading, setIsUploading] = useState(false);
   const [isPreparingBucket, setIsPreparingBucket] = useState(false);
 
-  // Check storage bucket on component mount
   useEffect(() => {
     const prepareBucket = async () => {
       setIsPreparingBucket(true);
@@ -44,7 +42,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
           toast({
             title: "تنبيه",
             description: "قد لا تظهر صور الإشعارات بشكل صحيح، يرجى التواصل مع المسؤول",
-            variant: "warning"
+            variant: "destructive"
           });
         }
       } catch (error) {
@@ -91,7 +89,6 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
       
       if (notificationImage) {
         try {
-          // Generate a safe filename
           const fileExt = notificationImage.name.split('.').pop();
           const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
           
