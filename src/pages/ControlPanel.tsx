@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -11,6 +12,7 @@ import { NotificationCard } from "@/components/control-panel/NotificationCard";
 import { TimerListSection } from "@/components/control-panel/TimerListSection";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Logo from "@/components/Logo";
 
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
@@ -33,7 +35,10 @@ const ControlPanel = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-blue-700">Control Panel | Trindsky</h1>
+        <div className="flex items-center gap-3">
+          <Logo size="small" />
+          <h1 className="text-2xl font-bold text-blue-700">Control Panel | Trindsky</h1>
+        </div>
         <div className="flex gap-2">
           <Button 
             onClick={() => navigate("/")} 

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -6,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const Login = () => {
   const { login } = useIframe();
@@ -49,6 +51,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center mb-6">
+        <Logo size="medium" />
+      </div>
+      
       <div className="w-full max-w-md px-4">
         <Card>
           <CardHeader className="text-center">

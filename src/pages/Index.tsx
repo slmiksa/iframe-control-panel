@@ -1,6 +1,7 @@
 
 import React from "react";
 import { useIframe } from "@/contexts/IframeContext";
+import Logo from "@/components/Logo";
 
 const Index = () => {
   const { iframeUrl, isLoading } = useIframe();
@@ -18,7 +19,14 @@ const Index = () => {
           title="Embedded Website"
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
         />
-      ) : null}
+      ) : (
+        <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
+          <Logo size="large" />
+          <h2 className="mt-8 text-2xl font-medium text-gray-700">
+            لم يتم تحديد رابط بعد. يرجى تسجيل الدخول لإضافة رابط.
+          </h2>
+        </div>
+      )}
     </div>
   );
 };
