@@ -29,12 +29,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const queryClient = new QueryClient();
 
-// Initialize storage bucket
-useEffect(() => {
-  createNotificationsBucket();
-}, []);
-
 const AppRoutes = () => {
+  // Move the useEffect inside the component
+  useEffect(() => {
+    createNotificationsBucket();
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Index />} />
