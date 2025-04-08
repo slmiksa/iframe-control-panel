@@ -31,10 +31,27 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
     return endTime;
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [isPreparingBucket, setIsPreparingBucket] = useState(false);
 
   useEffect(() => {
-    // Ensure the storage bucket exists
-    createNotificationsBucket();
+    const prepareBucket = async () => {
+      setIsPreparingBucket(true);
+      try {
+        // Ensure the storage bucket exists
+        await createNotificationsBucket();
+      } catch (error) {
+        console.error("Error preparing notifications bucket:", error);
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء تجهيز مخزن الصور",
+          variant: "destructive"
+        });
+      } finally {
+        setIsPreparingBucket(false);
+      }
+    };
+    
+    prepareBucket();
   }, []);
 
   const handleCreateNotification = async (e: React.FormEvent) => {
@@ -62,10 +79,14 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
         return;
       }
       
+      // Make sure bucket exists before upload
+      await createNotificationsBucket();
+      
       let imageUrl = "";
       if (notificationImage) {
         const fileName = `${Date.now()}_${notificationImage.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         
+        console.log("Uploading image:", fileName);
         const { data, error } = await supabase.storage
           .from('notifications')
           .upload(fileName, notificationImage, {
@@ -162,8 +183,13 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
               onChange={setNotificationEnd}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isUploading}>
-            {isUploading ? 'جاري الإنشاء...' : 'إنشاء الإشعار'}
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isUploading || isPreparingBucket}
+          >
+            {isPreparingBucket ? 'جاري تجهيز المخزن...' : 
+             isUploading ? 'جاري الإنشاء...' : 'إنشاء الإشعار'}
           </Button>
         </form>
       </CardContent>

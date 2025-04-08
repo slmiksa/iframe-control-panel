@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { supabase } from '@/integrations/supabase/client';
+import { createNotificationsBucket } from '@/integrations/supabase/createStorageBucket';
 
 export const NotificationModal: React.FC = () => {
   const { notifications, closeNotification } = useSystemAlerts();
@@ -11,6 +12,13 @@ export const NotificationModal: React.FC = () => {
   const [currentNotification, setCurrentNotification] = useState<typeof notifications[0] | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  
+  // Ensure bucket exists when component mounts
+  useEffect(() => {
+    createNotificationsBucket().catch(err => {
+      console.error("Failed to create notifications bucket:", err);
+    });
+  }, []);
 
   useEffect(() => {
     if (notifications.length > 0) {
@@ -49,6 +57,9 @@ export const NotificationModal: React.FC = () => {
   const getPublicImageUrl = async (path: string) => {
     try {
       console.log("Getting image URL for path:", path);
+      
+      // Ensure bucket exists before getting URL
+      await createNotificationsBucket();
       
       const { data } = supabase.storage
         .from('notifications')
