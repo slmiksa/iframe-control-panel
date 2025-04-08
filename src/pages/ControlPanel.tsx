@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -37,7 +36,7 @@ const ControlPanel = () => {
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Logo size="control-panel" />
-          <h1 className="text-2xl font-bold text-blue-700">Control Panel | Trindsky</h1>
+          <h1 className="text-2xl font-bold text-blue-700">iframe trindSky</h1>
         </div>
         <div className="flex gap-2">
           <Button 

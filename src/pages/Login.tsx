@@ -58,7 +58,7 @@ const Login = () => {
       <div className="w-full max-w-md px-4">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-blue-700">لوحة التحكم | Trindsky</CardTitle>
+            <CardTitle className="text-2xl font-bold text-blue-700">iframe trindSky</CardTitle>
             <CardDescription>يرجى تسجيل الدخول للوصول إلى لوحة التحكم</CardDescription>
           </CardHeader>
           <CardContent>
@@ -100,3 +100,4 @@ const Login = () => {
 };
 
 export default Login;
+
