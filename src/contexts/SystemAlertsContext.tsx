@@ -85,6 +85,10 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           if (!timerData.is_recurring) {
             console.log("Non-recurring timer outside active window, deactivating:", timerData.id);
             await deactivateBreakTimer(timerData.id);
+          } else if (endTime < now) {
+            // For recurring timers, reschedule to the next day
+            console.log("Recurring timer ended, rescheduling for next day:", timerData.id);
+            await rescheduleRecurringTimer(timerData);
           }
           setBreakTimer(null);
         }
@@ -93,6 +97,42 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
     } catch (error) {
       console.error("Unexpected error fetching break timer:", error);
+    }
+  };
+
+  // New function to reschedule recurring timers for the next day
+  const rescheduleRecurringTimer = async (timer: BreakTimer) => {
+    try {
+      console.log("Rescheduling recurring timer for next day:", timer.id);
+      
+      // Calculate next day's start and end times
+      const startTime = new Date(timer.start_time);
+      const endTime = new Date(timer.end_time);
+      
+      const nextStartTime = new Date(startTime);
+      nextStartTime.setDate(nextStartTime.getDate() + 1);
+      
+      const nextEndTime = new Date(endTime);
+      nextEndTime.setDate(nextEndTime.getDate() + 1);
+      
+      console.log(`Updating timer from ${startTime.toISOString()} to ${nextStartTime.toISOString()}`);
+      
+      const { error } = await supabase
+        .from('break_timer')
+        .update({ 
+          start_time: nextStartTime.toISOString(),
+          end_time: nextEndTime.toISOString()
+        })
+        .eq('id', timer.id);
+      
+      if (error) {
+        console.error("Error rescheduling recurring timer:", error);
+        return;
+      }
+      
+      console.log("Successfully rescheduled recurring timer:", timer.id);
+    } catch (error) {
+      console.error("Error in rescheduleRecurringTimer:", error);
     }
   };
 
@@ -149,6 +189,11 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
               if (!timer.is_recurring && !isActive && new Date(timer.end_time) < now) {
                 console.log("Deactivating expired non-recurring timer:", timer.id);
                 deactivateBreakTimer(timer.id);
+                return false;
+              } else if (timer.is_recurring && !isActive && new Date(timer.end_time) < now) {
+                // For recurring timers, reschedule to the next day
+                console.log("Recurring timer ended, rescheduling for next day:", timer.id);
+                rescheduleRecurringTimer(timer);
                 return false;
               }
               
@@ -278,6 +323,43 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   const deactivateBreakTimer = async (id: string) => {
     try {
       console.log("Deactivating break timer:", id);
+      
+      // Get timer info first to check if it's recurring
+      const { data: timerData, error: fetchError } = await supabase
+        .from('break_timer')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching timer info:", fetchError);
+        return;
+      }
+      
+      // For recurring timers, don't deactivate but reschedule for next day
+      if (timerData && timerData.is_recurring) {
+        const timer = {
+          id: timerData.id,
+          title: timerData.title,
+          start_time: timerData.start_time,
+          end_time: timerData.end_time,
+          is_active: !!timerData.is_active,
+          is_recurring: !!timerData.is_recurring
+        } as BreakTimer;
+        
+        console.log("Not deactivating recurring timer, rescheduling instead:", id);
+        await rescheduleRecurringTimer(timer);
+        
+        setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
+        
+        if (breakTimer && breakTimer.id === id) {
+          setBreakTimer(null);
+        }
+        
+        return;
+      }
+      
+      // For non-recurring timers, proceed with deactivation
       const { error } = await supabase
         .from('break_timer')
         .update({ is_active: false })
@@ -316,25 +398,51 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           .single();
         
         if (data) {
-          const { error } = await supabase
-            .from('break_timer')
-            .update({ is_active: false })
-            .eq('id', id);
+          // For recurring timers, we update the times to the next day instead of deactivating
+          if (data.is_recurring) {
+            const timer = {
+              id: data.id,
+              title: data.title,
+              start_time: data.start_time,
+              end_time: data.end_time,
+              is_active: true,
+              is_recurring: true
+            } as BreakTimer;
             
-          if (error) {
-            console.error("Error updating timer status:", error);
-            throw error;
+            await rescheduleRecurringTimer(timer);
+            
+            toast({
+              title: "تم الإغلاق",
+              description: "تم إغلاق المؤقت المتكرر وسيظهر غدا في نفس الوقت",
+            });
+          } else {
+            // For non-recurring timers, deactivate them
+            const { error } = await supabase
+              .from('break_timer')
+              .update({ is_active: false })
+              .eq('id', id);
+              
+            if (error) {
+              console.error("Error updating timer status:", error);
+              throw error;
+            }
+            
+            toast({
+              title: "تم الإغلاق",
+              description: "تم إغلاق مؤقت الراحة بنجاح",
+            });
           }
           
-          toast({
-            title: "تم الإغلاق",
-            description: data.is_recurring 
-              ? "تم إلغاء المؤقت المتكرر بنجاح" 
-              : "تم إغلاق مؤقت الراحة بنجاح",
-          });
-          
           setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
-          setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== id));
+          
+          // Refresh upcoming timers to show rescheduled recurring timers
+          if (data.is_recurring) {
+            setTimeout(() => {
+              fetchUpcomingBreakTimers();
+            }, 1000);
+          } else {
+            setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== id));
+          }
         }
       } catch (error) {
         console.error("Error closing break timer:", error);
@@ -348,27 +456,43 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     try {
       console.log("Closing current break timer:", breakTimer.id);
       
-      const { error } = await supabase
-        .from('break_timer')
-        .update({ is_active: false })
-        .eq('id', breakTimer.id);
+      if (breakTimer.is_recurring) {
+        await rescheduleRecurringTimer(breakTimer);
         
-      if (error) {
-        console.error("Error updating current timer status:", error);
-        throw error;
+        setBreakTimer(null);
+        
+        toast({
+          title: "تم الإغلاق",
+          description: "تم إغلاق المؤقت المتكرر وسيظهر غدا في نفس الوقت",
+        });
+        
+        setActiveBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
+        
+        // Refresh upcoming timers to show rescheduled recurring timers
+        setTimeout(() => {
+          fetchUpcomingBreakTimers();
+        }, 1000);
+      } else {
+        const { error } = await supabase
+          .from('break_timer')
+          .update({ is_active: false })
+          .eq('id', breakTimer.id);
+          
+        if (error) {
+          console.error("Error updating current timer status:", error);
+          throw error;
+        }
+        
+        setBreakTimer(null);
+        
+        toast({
+          title: "تم الإغلاق",
+          description: "تم إغلاق مؤقت الراحة بنجاح",
+        });
+        
+        setActiveBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
+        setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
       }
-      
-      setBreakTimer(null);
-      
-      toast({
-        title: "تم الإغلاق",
-        description: breakTimer.is_recurring 
-          ? "تم إلغاء المؤقت المتكرر بنجاح" 
-          : "تم إغلاق مؤقت الراحة بنجاح",
-      });
-      
-      setActiveBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
-      setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
     } catch (error) {
       console.error("Error closing break timer:", error);
       throw error;
@@ -523,6 +647,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           const endTimeMinutes = endHour * 60 + endMinute;
           
           shouldBeActive = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+          
+          // Check if the recurring timer has ended and needs to be rescheduled for next day
+          if (!shouldBeActive && endTime < now) {
+            console.log("Recurring timer has expired for today, rescheduling for tomorrow:", timer.id);
+            await rescheduleRecurringTimer(timer);
+            continue;
+          }
         } else {
           shouldBeActive = now >= startTime && now <= endTime;
         }

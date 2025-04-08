@@ -145,7 +145,7 @@ export const ActiveTimersList: React.FC = () => {
       toast({
         title: "تم بنجاح",
         description: isRecurring 
-          ? "تم إلغاء المؤقت المتكرر بنجاح" 
+          ? "تم إغلاق المؤقت المتكرر وسيظهر غدا في نفس الوقت" 
           : "تم إغلاق المؤقت بنجاح",
       });
     } catch (error) {
