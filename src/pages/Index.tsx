@@ -21,7 +21,7 @@ const Index = () => {
         />
       ) : (
         <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
-          <Logo size="extra-large" />
+          <Logo size="giant" />
           <h2 className="mt-8 text-2xl font-medium text-gray-700 text-center">
             لم يتم تحديد رابط بعد. يرجى تسجيل الدخول لإضافة رابط.
           </h2>

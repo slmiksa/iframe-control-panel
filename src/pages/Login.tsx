@@ -51,8 +51,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
-      <div className="flex flex-col items-center mb-6">
-        <Logo size="medium" />
+      <div className="flex flex-col items-center mb-10">
+        <Logo size="giant" />
       </div>
       
       <div className="w-full max-w-md px-4">
