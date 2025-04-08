@@ -10,6 +10,14 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 export const NotificationModal: React.FC = () => {
   const { activeNotification, dismissNotification } = useSystemAlerts();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // تعيين حالة الفتح عند تغيير الإشعار النشط
+  useEffect(() => {
+    if (activeNotification) {
+      setIsOpen(true);
+    }
+  }, [activeNotification]);
   
   useEffect(() => {
     const fetchImage = async () => {
@@ -53,28 +61,50 @@ export const NotificationModal: React.FC = () => {
     };
   }, [activeNotification]);
 
-  // إضافة آلية لمراقبة انتهاء وقت الإشعار والإغلاق التلقائي
+  // آلية مراقبة انتهاء وقت الإشعار والإغلاق التلقائي
   useEffect(() => {
-    if (activeNotification) {
-      const endTime = new Date(activeNotification.end_time).getTime();
-      const now = new Date().getTime();
-      const timeRemaining = endTime - now;
+    if (!activeNotification) return;
+    
+    const endTime = new Date(activeNotification.end_time).getTime();
+    const now = new Date().getTime();
+    const timeRemaining = endTime - now;
+    
+    console.log("Notification auto-close setup:", {
+      id: activeNotification.id,
+      title: activeNotification.title,
+      endTime: new Date(endTime).toLocaleString(),
+      now: new Date(now).toLocaleString(),
+      timeRemaining: Math.round(timeRemaining / 1000) + " seconds"
+    });
 
-      // إذا كان الوقت قد انتهى بالفعل، قم بإغلاق الإشعار فوراً
-      if (timeRemaining <= 0) {
-        handleDismiss();
-        return;
-      }
-
-      // إعداد مؤقت لإغلاق الإشعار عند انتهاء وقته
-      const timerId = setTimeout(() => {
-        handleDismiss();
-      }, timeRemaining);
-
-      // تنظيف المؤقت عند إزالة المكون
-      return () => clearTimeout(timerId);
+    // إذا كان الوقت قد انتهى بالفعل
+    if (timeRemaining <= 0) {
+      console.log("Notification already expired, closing immediately");
+      handleClose();
+      return;
     }
+
+    // إعداد مؤقت لإغلاق الإشعار عند انتهاء وقته
+    const timerId = setTimeout(() => {
+      console.log("Notification time expired, auto-closing", activeNotification.id);
+      handleClose();
+    }, timeRemaining);
+
+    // تنظيف المؤقت عند إزالة المكون
+    return () => {
+      console.log("Cleaning up notification timer");
+      clearTimeout(timerId);
+    };
   }, [activeNotification]);
+  
+  const handleClose = () => {
+    setIsOpen(false);
+    
+    // تأخير إغلاق الإشعار بشكل كامل للسماح بانتهاء الانتقالات
+    setTimeout(() => {
+      handleDismiss();
+    }, 300);
+  };
   
   const handleDismiss = () => {
     if (imageUrl) {
@@ -89,7 +119,7 @@ export const NotificationModal: React.FC = () => {
   }
   
   return (
-    <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[1200px] md:max-w-[1400px] w-[98vw] max-h-[90vh] overflow-y-auto flex flex-col items-center">
         <DialogHeader className="text-center w-full">
           <DialogTitle className="text-5xl font-bold mb-6 text-center">{activeNotification.title}</DialogTitle>
@@ -97,7 +127,7 @@ export const NotificationModal: React.FC = () => {
             variant="ghost" 
             size="icon" 
             className="absolute right-4 top-4" 
-            onClick={handleDismiss}
+            onClick={handleClose}
           >
             <X className="h-6 w-6" />
             <span className="sr-only">Close</span>
@@ -121,7 +151,7 @@ export const NotificationModal: React.FC = () => {
         </DialogDescription>
         
         <div className="mt-6 flex justify-center">
-          <Button onClick={handleDismiss} size="lg" className="px-12 py-6 text-xl">تم</Button>
+          <Button onClick={handleClose} size="lg" className="px-12 py-6 text-xl">تم</Button>
         </div>
       </DialogContent>
     </Dialog>
