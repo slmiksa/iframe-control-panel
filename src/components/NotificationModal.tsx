@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { X } from 'lucide-react';
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export const NotificationModal: React.FC = () => {
   const { activeNotification, dismissNotification } = useSystemAlerts();
@@ -69,9 +70,9 @@ export const NotificationModal: React.FC = () => {
   
   return (
     <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[600px] md:max-w-[700px] w-[95vw]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{activeNotification.title}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">{activeNotification.title}</DialogTitle>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -84,21 +85,23 @@ export const NotificationModal: React.FC = () => {
         </DialogHeader>
         
         {imageUrl && (
-          <div className="mb-4 flex justify-center">
-            <img 
-              src={imageUrl} 
-              alt={activeNotification.title} 
-              className="max-h-48 rounded-md object-contain" 
-            />
+          <div className="mb-6">
+            <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
+              <img 
+                src={imageUrl} 
+                alt={activeNotification.title} 
+                className="w-full h-full object-contain" 
+              />
+            </AspectRatio>
           </div>
         )}
         
-        <DialogDescription className="text-base">
+        <DialogDescription className="text-lg">
           {activeNotification.content}
         </DialogDescription>
         
-        <div className="mt-4 flex justify-end">
-          <Button onClick={handleDismiss}>تم</Button>
+        <div className="mt-6 flex justify-end">
+          <Button onClick={handleDismiss} size="lg" className="px-6">تم</Button>
         </div>
       </DialogContent>
     </Dialog>
