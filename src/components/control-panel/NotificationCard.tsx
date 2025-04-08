@@ -26,6 +26,26 @@ export const NotificationCard = () => {
 
   useEffect(() => {
     fetchUpcomingNotifications();
+    
+    // Set up realtime subscription for notifications changes
+    const channel = supabase
+      .channel('admin:notifications')
+      .on('postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'notifications'
+        },
+        () => {
+          console.log('Notification table changed, refreshing list');
+          fetchUpcomingNotifications();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchUpcomingNotifications = async () => {
@@ -180,7 +200,7 @@ export const NotificationCard = () => {
         }
       }
       
-      // Delete notification record
+      // Delete notification record - this will trigger the realtime event
       const { error } = await supabase
         .from('notifications')
         .delete()
@@ -190,10 +210,8 @@ export const NotificationCard = () => {
       
       toast({
         title: "تم حذف الإشعار",
-        description: "تم حذف الإشعار بنجاح",
+        description: "تم حذف الإشعار بنجاح من جميع المستخدمين",
       });
-      
-      fetchUpcomingNotifications();
       
     } catch (error) {
       console.error("Error deleting notification:", error);

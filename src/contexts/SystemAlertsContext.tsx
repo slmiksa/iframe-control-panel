@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -167,8 +168,50 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       fetchActiveBreakTimers();
     }, 60000); // Check every minute
     
-    return () => clearInterval(intervalId);
-  }, [fetchActiveBreakTimers]);
+    // Setup realtime subscription for notifications
+    const channel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', 
+        { 
+          event: 'DELETE', 
+          schema: 'public', 
+          table: 'notifications' 
+        }, 
+        (payload) => {
+          console.log('Notification deleted:', payload);
+          
+          // If the currently displayed notification was deleted, dismiss it
+          if (activeNotification && activeNotification.id === payload.old.id) {
+            console.log('Dismissing active notification because it was deleted');
+            setActiveNotification(null);
+          }
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications'
+        },
+        (payload) => {
+          console.log('Notification updated:', payload);
+          
+          // If the active notification was updated (e.g., deactivated), check and dismiss if needed
+          if (activeNotification && activeNotification.id === payload.new.id) {
+            if (!payload.new.is_active) {
+              console.log('Dismissing active notification because it was deactivated');
+              setActiveNotification(null);
+            }
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      clearInterval(intervalId);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchActiveBreakTimers, activeNotification]);
 
   const dismissBreakTimer = useCallback(() => {
     setActiveBreakTimer(null);
