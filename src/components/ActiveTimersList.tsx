@@ -4,6 +4,7 @@ import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Trash } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 export const ActiveTimersList: React.FC = () => {
   const { activeBreakTimers, closeBreakTimer, fetchActiveBreakTimers } = useSystemAlerts();
@@ -21,11 +22,31 @@ export const ActiveTimersList: React.FC = () => {
   }, [fetchActiveBreakTimers]);
   
   // Handle closing a specific timer by ID
-  const handleCloseTimer = (timerId: string) => {
-    closeBreakTimer(timerId).then(() => {
+  const handleCloseTimer = async (timerId: string, isRecurring: boolean | undefined) => {
+    try {
+      // نتعامل مع المؤقتات المتكررة وغير المتكررة بشكل مختلف
+      if (isRecurring) {
+        // للمؤقتات المتكررة، نقوم بتعطيلها في قاعدة البيانات
+        await closeBreakTimer(timerId);
+        toast({
+          title: "تم بنجاح",
+          description: "تم إلغاء المؤقت المتكرر بنجاح",
+        });
+      } else {
+        // للمؤقتات غير المتكررة، نستخدم الطريقة العادية
+        await closeBreakTimer(timerId);
+      }
+      
       // إعادة تحميل القائمة بعد إغلاق المؤقت مباشرة
       fetchActiveBreakTimers();
-    });
+    } catch (error) {
+      console.error("Error closing timer:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إغلاق المؤقت",
+        variant: "destructive"
+      });
+    }
   };
   
   if (activeBreakTimers.length === 0) {
@@ -59,7 +80,7 @@ export const ActiveTimersList: React.FC = () => {
                 {timer.is_recurring && <span className="ml-2 text-blue-500">(يتكرر يوميا)</span>}
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => handleCloseTimer(timer.id)}>
+            <Button variant="ghost" size="sm" onClick={() => handleCloseTimer(timer.id, timer.is_recurring)}>
               <Trash className="h-4 w-4" />
             </Button>
           </div>

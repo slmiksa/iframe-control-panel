@@ -27,12 +27,26 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const AppRoutes = () => {
   // Move the useEffect inside the component
   useEffect(() => {
     createNotificationsBucket();
+    
+    // Log global error handler to catch unhandled promises
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+    });
+    
+    console.log("App initialized");
   }, []);
 
   return (
@@ -50,22 +64,26 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <IframeProvider>
-        <SystemAlertsProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <BreakTimerModal />
-            <NotificationModal />
-          </BrowserRouter>
-        </SystemAlertsProvider>
-      </IframeProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  console.log("App rendering");
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <IframeProvider>
+          <SystemAlertsProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <BreakTimerModal />
+              <NotificationModal />
+            </BrowserRouter>
+          </SystemAlertsProvider>
+        </IframeProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

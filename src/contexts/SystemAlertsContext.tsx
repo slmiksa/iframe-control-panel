@@ -2,14 +2,13 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
-// Update the BreakTimer type to include is_recurring as a possible property
 export type BreakTimer = {
   id: string;
   title: string;
   start_time: string;
   end_time: string;
   is_active: boolean;
-  is_recurring?: boolean; // Make is_recurring optional
+  is_recurring?: boolean;
 };
 
 export type Notification = {
@@ -44,10 +43,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
   const fetchBreakTimer = async () => {
     try {
+      console.log("Fetching break timer...");
       const { data, error } = await supabase
         .from('break_timer')
         .select('*')
         .eq('is_active', true)
+        .order('start_time', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -71,41 +73,19 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         const startTime = new Date(timerData.start_time);
         const endTime = new Date(timerData.end_time);
         
-        if (now < startTime || now > endTime) {
-          // If current time is outside the timer range, don't set it as active
-          // unless it's recurring and should be active today
-          if (timerData.is_recurring) {
-            // For recurring timers, check if it should be active today based on time (not date)
-            const currentTime = now.getHours() * 60 + now.getMinutes();
-            const startDayTime = startTime.getHours() * 60 + startTime.getMinutes();
-            const endDayTime = endTime.getHours() * 60 + endTime.getMinutes();
-            
-            if (currentTime >= startDayTime && currentTime <= endDayTime) {
-              // It's within the time range today, adjust the dates to today
-              const adjustedStartTime = new Date(now);
-              adjustedStartTime.setHours(startTime.getHours(), startTime.getMinutes(), 0);
-              
-              const adjustedEndTime = new Date(now);
-              adjustedEndTime.setHours(endTime.getHours(), endTime.getMinutes(), 0);
-              
-              const adjustedData: BreakTimer = {
-                ...timerData,
-                start_time: adjustedStartTime.toISOString(),
-                end_time: adjustedEndTime.toISOString()
-              };
-              
-              setBreakTimer(adjustedData);
-              return;
-            }
-          }
-          
-          // Not recurring or not active today
-          await deactivateBreakTimer(timerData.id);
-          setBreakTimer(null);
-          return;
-        }
+        const isCurrentlyActive = checkTimerIsCurrentlyActive(timerData, now);
         
-        setBreakTimer(timerData);
+        if (isCurrentlyActive) {
+          console.log("Timer is currently active, setting to state:", timerData);
+          setBreakTimer(timerData);
+        } else {
+          console.log("Timer is not currently active, not showing in UI");
+          if (!timerData.is_recurring) {
+            console.log("Non-recurring timer outside active window, deactivating:", timerData.id);
+            await deactivateBreakTimer(timerData.id);
+          }
+          setBreakTimer(null);
+        }
       } else {
         setBreakTimer(null);
       }
@@ -114,8 +94,34 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  const checkTimerIsCurrentlyActive = (timer: BreakTimer, now: Date) => {
+    const startTime = new Date(timer.start_time);
+    const endTime = new Date(timer.end_time);
+
+    // For recurring timers, we check based on time of day
+    if (timer.is_recurring) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTimeMinutes = currentHour * 60 + currentMinute;
+      
+      const startHour = startTime.getHours();
+      const startMinute = startTime.getMinutes();
+      const startTimeMinutes = startHour * 60 + startMinute;
+      
+      const endHour = endTime.getHours();
+      const endMinute = endTime.getMinutes();
+      const endTimeMinutes = endHour * 60 + endMinute;
+      
+      return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+    }
+    
+    // For non-recurring timers, we check if current time is between start and end
+    return now >= startTime && now <= endTime;
+  };
+
   const fetchActiveBreakTimers = async () => {
     try {
+      console.log("Fetching active break timers...");
       const { data, error } = await supabase
         .from('break_timer')
         .select('*')
@@ -136,7 +142,20 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         is_recurring: !!item.is_recurring
       } as BreakTimer)) : [];
 
+      console.log("Received active timers:", timers.length);
       setActiveBreakTimers(timers);
+      
+      // If we don't have an active timer set, but there are active timers that should be shown
+      // set the first one that's currently active as the active timer
+      if (!breakTimer) {
+        const now = new Date();
+        const currentlyActiveTimer = timers.find(timer => checkTimerIsCurrentlyActive(timer, now));
+        
+        if (currentlyActiveTimer) {
+          console.log("Found currently active timer, setting to state:", currentlyActiveTimer);
+          setBreakTimer(currentlyActiveTimer);
+        }
+      }
     } catch (error) {
       console.error("Unexpected error fetching active break timers:", error);
     }
@@ -163,6 +182,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
   const deactivateBreakTimer = async (id: string) => {
     try {
+      console.log("Deactivating break timer:", id);
       await supabase
         .from('break_timer')
         .update({ is_active: false })
@@ -179,6 +199,8 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     // If an ID is provided, close that specific timer
     if (id) {
       try {
+        console.log("Closing specific break timer:", id);
+        
         // Check if this timer is also the current break timer
         if (breakTimer && breakTimer.id === id) {
           setBreakTimer(null);
@@ -191,28 +213,26 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           .eq('id', id)
           .single();
         
-        if (data && data.is_recurring) {
-          // For recurring timers, we just hide it until tomorrow
-          // but keep it active in the database
+        if (data) {
+          // For all types of timers, we now deactivate in the database
+          await supabase
+            .from('break_timer')
+            .update({ is_active: false })
+            .eq('id', id);
+          
           toast({
             title: "تم الإغلاق",
-            description: "تم إغلاق مؤقت الراحة وسيظهر مرة أخرى في نفس الوقت غدا",
+            description: data.is_recurring 
+              ? "تم إلغاء المؤقت المتكرر بنجاح" 
+              : "تم إغلاق مؤقت الراحة بنجاح",
           });
           
-          // Filter the timer from the active timers list in UI only
+          // Filter out the timer from the local state
           setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
-          return;
         }
-        
-        // For non-recurring timers, deactivate in the database
-        await deactivateBreakTimer(id);
-        
-        toast({
-          title: "تم الإغلاق",
-          description: "تم إغلاق مؤقت الراحة بنجاح",
-        });
       } catch (error) {
         console.error("Error closing break timer:", error);
+        throw error; // Re-throw for handling in the component
       }
       return;
     }
@@ -221,30 +241,28 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     if (!breakTimer) return;
     
     try {
-      // For recurring timers, we just hide it until tomorrow
-      // but keep it active in the database
-      if (breakTimer.is_recurring) {
-        setBreakTimer(null);
-        toast({
-          title: "تم الإغلاق",
-          description: "تم إغلاق مؤقت الراحة وسيظهر مرة أخرى في نفس الوقت غدا",
-        });
-        return;
-      }
+      console.log("Closing current break timer:", breakTimer.id);
       
-      // For non-recurring timers, deactivate in the database
-      await deactivateBreakTimer(breakTimer.id);
+      // For all types of timers, we now deactivate in the database
+      await supabase
+        .from('break_timer')
+        .update({ is_active: false })
+        .eq('id', breakTimer.id);
+      
       setBreakTimer(null);
       
       toast({
         title: "تم الإغلاق",
-        description: "تم إغلاق مؤقت الراحة بنجاح",
+        description: breakTimer.is_recurring 
+          ? "تم إلغاء المؤقت المتكرر بنجاح" 
+          : "تم إغلاق مؤقت الراحة بنجاح",
       });
       
       // Refresh the active timers list
       await fetchActiveBreakTimers();
     } catch (error) {
       console.error("Error closing break timer:", error);
+      throw error; // Re-throw for handling in the component
     }
   };
 
@@ -345,6 +363,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const loadData = async () => {
+      console.log("Initial data load");
       await fetchBreakTimer();
       await fetchActiveBreakTimers();
       await fetchNotifications();
@@ -353,7 +372,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     loadData();
     
     // Set up an interval to check for new alerts every 30 seconds
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(async () => {
+      console.log("Checking for updates...");
+      await fetchBreakTimer();
+      await fetchActiveBreakTimers();
+      await fetchNotifications();
+    }, 30000);
     
     return () => clearInterval(interval);
   }, []);
