@@ -52,6 +52,29 @@ export const NotificationModal: React.FC = () => {
       }
     };
   }, [activeNotification]);
+
+  // إضافة آلية لمراقبة انتهاء وقت الإشعار والإغلاق التلقائي
+  useEffect(() => {
+    if (activeNotification) {
+      const endTime = new Date(activeNotification.end_time).getTime();
+      const now = new Date().getTime();
+      const timeRemaining = endTime - now;
+
+      // إذا كان الوقت قد انتهى بالفعل، قم بإغلاق الإشعار فوراً
+      if (timeRemaining <= 0) {
+        handleDismiss();
+        return;
+      }
+
+      // إعداد مؤقت لإغلاق الإشعار عند انتهاء وقته
+      const timerId = setTimeout(() => {
+        handleDismiss();
+      }, timeRemaining);
+
+      // تنظيف المؤقت عند إزالة المكون
+      return () => clearTimeout(timerId);
+    }
+  }, [activeNotification]);
   
   const handleDismiss = () => {
     if (imageUrl) {
