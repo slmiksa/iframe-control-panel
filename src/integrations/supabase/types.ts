@@ -30,6 +30,33 @@ export type Database = {
         }
         Relationships: []
       }
+      break_timer: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          id: string
+          is_active: boolean | null
+          start_time: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          start_time: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          start_time?: string
+          title?: string
+        }
+        Relationships: []
+      }
       iframe_urls: {
         Row: {
           created_at: string | null
@@ -48,6 +75,39 @@ export type Database = {
           id?: string
           updated_at?: string | null
           url?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          end_time: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          start_time: string
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          end_time: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          start_time: string
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          start_time?: string
+          title?: string
         }
         Relationships: []
       }

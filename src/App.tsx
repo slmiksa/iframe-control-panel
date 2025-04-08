@@ -5,11 +5,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { IframeProvider } from "./contexts/IframeContext";
+import { SystemAlertsProvider } from "./contexts/SystemAlertsContext";
 import { useIframe } from "./contexts/IframeContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ControlPanel from "./pages/ControlPanel";
 import NotFound from "./pages/NotFound";
+import { BreakTimerModal } from "./components/BreakTimerModal";
+import { NotificationModal } from "./components/NotificationModal";
 
 // Protected Route component to redirect to login if not authenticated
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -46,9 +49,13 @@ const App = () => (
       <Toaster />
       <Sonner />
       <IframeProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <SystemAlertsProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <BreakTimerModal />
+            <NotificationModal />
+          </BrowserRouter>
+        </SystemAlertsProvider>
       </IframeProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -8,24 +7,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useSystemAlerts } from "@/contexts/SystemAlertsContext";
+import { Calendar } from "@/components/ui/calendar";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Textarea } from "@/components/ui/textarea";
 
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
   const [urlInput, setUrlInput] = useState(iframeUrl);
   const [submitting, setSubmitting] = useState(false);
   
-  // Admin management state
   const [newAdminUsername, setNewAdminUsername] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [isRemovingAdmin, setIsRemovingAdmin] = useState(false);
   
   const navigate = useNavigate();
+  const { createBreakTimer, createNotification } = useSystemAlerts();
+
+  const [breakTimerTitle, setBreakTimerTitle] = useState("");
+  const [breakTimerStart, setBreakTimerStart] = useState<Date>(new Date());
+  const [breakTimerEnd, setBreakTimerEnd] = useState<Date>(new Date());
+
+  const [notificationTitle, setNotificationTitle] = useState("");
+  const [notificationContent, setNotificationContent] = useState("");
+  const [notificationImage, setNotificationImage] = useState<File | null>(null);
+  const [notificationStart, setNotificationStart] = useState<Date>(new Date());
+  const [notificationEnd, setNotificationEnd] = useState<Date>(new Date());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic URL validation
     let formattedUrl = urlInput.trim();
     
     if (formattedUrl && !formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
@@ -51,7 +63,6 @@ const ControlPanel = () => {
         description: "تم تحديث رابط الموقع",
       });
       
-      // Navigate to the home page to view the iframe
       navigate("/");
     } catch (error) {
       console.error("Error updating URL:", error);
@@ -155,6 +166,69 @@ const ControlPanel = () => {
     }
   };
 
+  const handleCreateBreakTimer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await createBreakTimer({
+      title: breakTimerTitle,
+      start_time: breakTimerStart.toISOString(),
+      end_time: breakTimerEnd.toISOString(),
+      is_active: true
+    });
+
+    if (success) {
+      toast({
+        title: "نجاح",
+        description: "تم إنشاء مؤقت البريك بنجاح"
+      });
+      setBreakTimerTitle("");
+      setBreakTimerStart(new Date());
+      setBreakTimerEnd(new Date());
+    }
+  };
+
+  const handleCreateNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let imageUrl = "";
+    if (notificationImage) {
+      const { data, error } = await supabase.storage
+        .from('notifications')
+        .upload(`${Date.now()}_${notificationImage.name}`, notificationImage);
+      
+      if (error) {
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء رفع الصورة",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      imageUrl = data?.path || "";
+    }
+
+    const success = await createNotification({
+      title: notificationTitle,
+      content: notificationContent,
+      image_url: imageUrl,
+      start_time: notificationStart.toISOString(),
+      end_time: notificationEnd.toISOString(),
+      is_active: true
+    });
+
+    if (success) {
+      toast({
+        title: "نجاح",
+        description: "تم إنشاء الإشعار بنجاح"
+      });
+      setNotificationTitle("");
+      setNotificationContent("");
+      setNotificationImage(null);
+      setNotificationStart(new Date());
+      setNotificationEnd(new Date());
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
@@ -240,7 +314,7 @@ const ControlPanel = () => {
                     </div>
                     <div className="flex items-end">
                       <Button type="submit" className="w-full md:w-auto" disabled={isAddingAdmin}>
-                        {isAddingAdmin ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                        {isAddingAdmin ? <Loader2 className="animate-spin h-4 w-4" /> : null}
                         إضافة مسؤول جديد
                       </Button>
                     </div>
@@ -277,8 +351,7 @@ const ControlPanel = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleRemoveAdmin(admin.username)}
-                                disabled={admin.username === "admin" || isRemovingAdmin} // Prevent removing the default admin
-                                title={admin.username === "admin" ? "لا يمكن حذف المسؤول الافتراضي" : "حذف المسؤول"}
+                                disabled={admin.username === "admin" || isRemovingAdmin}
                               >
                                 {isRemovingAdmin ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
                               </Button>
@@ -320,6 +393,82 @@ const ControlPanel = () => {
       <footer className="bg-white p-4 text-center text-gray-500 text-sm">
         &copy; {new Date().getFullYear()} Trindsky - All rights reserved
       </footer>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>إنشاء مؤقت البريك</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateBreakTimer} className="space-y-4">
+            <Input
+              placeholder="عنوان مؤقت البريك"
+              value={breakTimerTitle}
+              onChange={(e) => setBreakTimerTitle(e.target.value)}
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label>وقت البدء</label>
+                <DateTimePicker 
+                  date={breakTimerStart}
+                  setDate={setBreakTimerStart}
+                />
+              </div>
+              <div>
+                <label>وقت الانتهاء</label>
+                <DateTimePicker 
+                  date={breakTimerEnd}
+                  setDate={setBreakTimerEnd}
+                />
+              </div>
+            </div>
+            <Button type="submit">إنشاء مؤقت البريك</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>إنشاء إشعار</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateNotification} className="space-y-4">
+            <Input
+              placeholder="عنوان الإشعار"
+              value={notificationTitle}
+              onChange={(e) => setNotificationTitle(e.target.value)}
+              required
+            />
+            <Textarea
+              placeholder="محتوى الإشعار"
+              value={notificationContent}
+              onChange={(e) => setNotificationContent(e.target.value)}
+            />
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setNotificationImage(e.target.files?.[0] || null)}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label>وقت البدء</label>
+                <DateTimePicker 
+                  date={notificationStart}
+                  setDate={setNotificationStart}
+                />
+              </div>
+              <div>
+                <label>وقت الانتهاء</label>
+                <DateTimePicker 
+                  date={notificationEnd}
+                  setDate={setNotificationEnd}
+                />
+              </div>
+            </div>
+            <Button type="submit">إنشاء الإشعار</Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
