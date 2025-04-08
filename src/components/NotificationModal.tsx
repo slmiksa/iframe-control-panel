@@ -70,38 +70,38 @@ export const NotificationModal: React.FC = () => {
   
   return (
     <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[700px] w-[95vw]">
+      <DialogContent className="sm:max-w-[900px] md:max-w-[1100px] w-[98vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{activeNotification.title}</DialogTitle>
+          <DialogTitle className="text-3xl font-bold mb-4">{activeNotification.title}</DialogTitle>
           <Button 
             variant="ghost" 
             size="icon" 
             className="absolute right-4 top-4" 
             onClick={handleDismiss}
           >
-            <X className="h-4 w-4" />
+            <X className="h-6 w-6" />
             <span className="sr-only">Close</span>
           </Button>
         </DialogHeader>
         
         {imageUrl && (
-          <div className="mb-6">
-            <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
+          <div className="mb-8 w-full">
+            <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg overflow-hidden shadow-lg">
               <img 
                 src={imageUrl} 
                 alt={activeNotification.title} 
-                className="w-full h-full object-contain" 
+                className="w-full h-full object-cover" 
               />
             </AspectRatio>
           </div>
         )}
         
-        <DialogDescription className="text-lg">
+        <DialogDescription className="text-xl leading-relaxed mb-6">
           {activeNotification.content}
         </DialogDescription>
         
         <div className="mt-6 flex justify-end">
-          <Button onClick={handleDismiss} size="lg" className="px-6">تم</Button>
+          <Button onClick={handleDismiss} size="lg" className="px-8 text-lg">تم</Button>
         </div>
       </DialogContent>
     </Dialog>
