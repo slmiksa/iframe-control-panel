@@ -16,7 +16,7 @@ export const NotificationModal: React.FC = () => {
   // Ensure bucket exists when component mounts
   useEffect(() => {
     createNotificationsBucket().catch(err => {
-      console.error("Failed to create notifications bucket:", err);
+      console.error("Failed to prepare notifications bucket:", err);
     });
   }, []);
 
@@ -58,16 +58,27 @@ export const NotificationModal: React.FC = () => {
     try {
       console.log("Getting image URL for path:", path);
       
-      // Ensure bucket exists before getting URL
-      await createNotificationsBucket();
+      if (!path) {
+        console.log("No image path provided");
+        setImageUrl(null);
+        setImageError(true);
+        return;
+      }
       
+      // Get the public URL
       const { data } = supabase.storage
         .from('notifications')
         .getPublicUrl(path);
       
-      console.log("Image public URL:", data.publicUrl);  
-      setImageUrl(data.publicUrl);
-      setImageError(false);
+      if (data && data.publicUrl) {
+        console.log("Image public URL:", data.publicUrl);  
+        setImageUrl(data.publicUrl);
+        setImageError(false);
+      } else {
+        console.error('Failed to get public URL');
+        setImageError(true);
+        setImageUrl(null);
+      }
     } catch (error) {
       console.error('Error getting image URL:', error);
       setImageError(true);

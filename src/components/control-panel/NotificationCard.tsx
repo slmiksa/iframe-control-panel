@@ -33,11 +33,11 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
   const [isUploading, setIsUploading] = useState(false);
   const [isPreparingBucket, setIsPreparingBucket] = useState(false);
 
+  // Check storage bucket on component mount
   useEffect(() => {
     const prepareBucket = async () => {
       setIsPreparingBucket(true);
       try {
-        // Ensure the storage bucket exists
         await createNotificationsBucket();
       } catch (error) {
         console.error("Error preparing notifications bucket:", error);
@@ -79,34 +79,42 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
         return;
       }
       
-      // Make sure bucket exists before upload
-      await createNotificationsBucket();
-      
       let imageUrl = "";
+      
       if (notificationImage) {
-        const fileName = `${Date.now()}_${notificationImage.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        
-        console.log("Uploading image:", fileName);
-        const { data, error } = await supabase.storage
-          .from('notifications')
-          .upload(fileName, notificationImage, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        
-        if (error) {
-          console.error("Storage upload error:", error);
+        try {
+          // Generate a safe filename
+          const fileExt = notificationImage.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+          
+          console.log("Uploading image:", fileName);
+          
+          const { data, error } = await supabase.storage
+            .from('notifications')
+            .upload(fileName, notificationImage, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (error) {
+            console.error("Storage upload error:", error);
+            toast({
+              title: "خطأ",
+              description: `حدث خطأ أثناء رفع الصورة: ${error.message}`,
+              variant: "destructive"
+            });
+          } else {
+            imageUrl = fileName;
+            console.log("Image uploaded successfully:", imageUrl);
+          }
+        } catch (uploadError) {
+          console.error("Exception during upload:", uploadError);
           toast({
             title: "خطأ",
-            description: `حدث خطأ أثناء رفع الصورة: ${error.message}`,
+            description: "حدث خطأ غير متوقع أثناء رفع الصورة",
             variant: "destructive"
           });
-          setIsUploading(false);
-          return;
         }
-
-        imageUrl = data?.path || "";
-        console.log("Image uploaded successfully:", imageUrl);
       }
 
       const success = await createNotification({
