@@ -9,12 +9,14 @@ import { toast } from "@/components/ui/use-toast";
 export const ActiveTimersList: React.FC = () => {
   const { activeBreakTimers, closeBreakTimer, fetchActiveBreakTimers } = useSystemAlerts();
   
-  // تحديث قائمة المؤقتات النشطة عند تحميل المكون
+  // Update the list of active timers when component loads
   useEffect(() => {
+    console.log("ActiveTimersList component mounted");
     fetchActiveBreakTimers();
     
-    // إعادة تحميل المؤقتات النشطة كل 10 ثوان
+    // Refresh active timers list every 10 seconds to ensure they're always up to date
     const interval = setInterval(() => {
+      console.log("Refreshing active timers list");
       fetchActiveBreakTimers();
     }, 10000);
     
@@ -24,21 +26,19 @@ export const ActiveTimersList: React.FC = () => {
   // Handle closing a specific timer by ID
   const handleCloseTimer = async (timerId: string, isRecurring: boolean | undefined) => {
     try {
-      // نتعامل مع المؤقتات المتكررة وغير المتكررة بشكل مختلف
-      if (isRecurring) {
-        // للمؤقتات المتكررة، نقوم بتعطيلها في قاعدة البيانات
-        await closeBreakTimer(timerId);
-        toast({
-          title: "تم بنجاح",
-          description: "تم إلغاء المؤقت المتكرر بنجاح",
-        });
-      } else {
-        // للمؤقتات غير المتكررة، نستخدم الطريقة العادية
-        await closeBreakTimer(timerId);
-      }
+      console.log(`Closing timer: ${timerId}, recurring: ${isRecurring}`);
+      await closeBreakTimer(timerId);
       
-      // إعادة تحميل القائمة بعد إغلاق المؤقت مباشرة
-      fetchActiveBreakTimers();
+      // Always show success message
+      toast({
+        title: "تم بنجاح",
+        description: isRecurring 
+          ? "تم إلغاء المؤقت المتكرر بنجاح" 
+          : "تم إغلاق المؤقت بنجاح",
+      });
+      
+      // Refresh the list after closing the timer
+      await fetchActiveBreakTimers();
     } catch (error) {
       console.error("Error closing timer:", error);
       toast({

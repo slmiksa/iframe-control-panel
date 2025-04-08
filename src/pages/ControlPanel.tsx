@@ -14,6 +14,7 @@ import { SimpleTimePicker } from "@/components/SimpleTimePicker";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ActiveTimersList } from "@/components/ActiveTimersList";
+import { UpcomingTimersList } from "@/components/UpcomingTimersList";
 
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
@@ -446,7 +447,7 @@ const ControlPanel = () => {
         &copy; {new Date().getFullYear()} Trindsky - All rights reserved
       </footer>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <Card>
           <CardHeader>
             <CardTitle>إنشاء مؤقت البريك</CardTitle>
@@ -488,7 +489,10 @@ const ControlPanel = () => {
           </CardContent>
         </Card>
         
-        <ActiveTimersList />
+        <div className="space-y-6">
+          <ActiveTimersList />
+          <UpcomingTimersList />
+        </div>
       </div>
 
       <Card>
