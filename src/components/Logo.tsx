@@ -18,7 +18,7 @@ const Logo: React.FC<LogoProps> = ({ className = "", size = "medium" }) => {
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <img 
-        src="/lovable-uploads/a1aab481-0a1c-4ef9-8ca8-bb77381ea4a1.png" 
+        src="/lovable-uploads/e8002f1c-a04b-4f5c-8094-bad7c732b9f4.png" 
         alt="Iframe trindSky Logo" 
         className={`${sizeClasses[size]} object-contain`}
       />
