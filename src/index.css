@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,33 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Add custom animations for the timer */
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+/* Digital clock font for the timer */
+@font-face {
+  font-family: 'Digital-7';
+  src: url('https://cdn.jsdelivr.net/npm/digital-7-font@1.0.0/digital-7.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.countdown-timer {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
