@@ -162,53 +162,70 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       console.log("Fetching upcoming break timers...");
       const now = new Date().toISOString();
       
-      const { data, error } = await supabase
+      const { data: allActiveTimers, error: activeError } = await supabase
         .from('break_timer')
         .select('*')
-        .eq('is_active', true)
-        .or(`start_time.gt.${now},is_recurring.eq.true`);
-
-      if (error) {
-        console.error("Error fetching upcoming break timers:", error);
+        .eq('is_active', true);
+        
+      if (activeError) {
+        console.error("Error fetching all active break timers:", activeError);
         return;
       }
-
-      const timers = data ? data.map(item => ({
-        id: item.id,
-        title: item.title,
-        start_time: item.start_time,
-        end_time: item.end_time,
-        is_active: !!item.is_active,
-        is_recurring: !!item.is_recurring
-      } as BreakTimer)) : [];
+      
+      const timers = allActiveTimers 
+        ? allActiveTimers.map(item => ({
+            id: item.id,
+            title: item.title,
+            start_time: item.start_time,
+            end_time: item.end_time,
+            is_active: !!item.is_active,
+            is_recurring: !!item.is_recurring
+          } as BreakTimer)) 
+        : [];
       
       const processedTimers = timers.map(timer => {
-        if (timer.is_recurring) {
-          const startTime = new Date(timer.start_time);
-          const endTime = new Date(timer.end_time);
-          const now = new Date();
-          
-          if (startTime < now && endTime < now) {
-            const nextStartTime = new Date(startTime);
-            nextStartTime.setDate(nextStartTime.getDate() + 1);
-            
-            const nextEndTime = new Date(endTime);
-            nextEndTime.setDate(nextEndTime.getDate() + 1);
-            
-            return {
-              ...timer,
-              start_time: nextStartTime.toISOString(),
-              end_time: nextEndTime.toISOString()
-            };
+        const startTime = new Date(timer.start_time);
+        const endTime = new Date(timer.end_time);
+        const nowDate = new Date();
+        
+        if (timer.is_recurring && endTime < nowDate) {
+          let daysToAdd = 1;
+          while (new Date(endTime.getTime() + daysToAdd * 24 * 60 * 60 * 1000) < nowDate) {
+            daysToAdd++;
           }
+          
+          const nextStartTime = new Date(startTime);
+          nextStartTime.setDate(nextStartTime.getDate() + daysToAdd);
+          
+          const nextEndTime = new Date(endTime);
+          nextEndTime.setDate(nextEndTime.getDate() + daysToAdd);
+          
+          return {
+            ...timer,
+            start_time: nextStartTime.toISOString(),
+            end_time: nextEndTime.toISOString()
+          };
         }
+        
+        if (!timer.is_recurring && endTime < nowDate) {
+          deactivateBreakTimer(timer.id);
+        }
+        
         return timer;
       });
+      
+      const upcomingTimers = processedTimers.filter(timer => {
+        const endTime = new Date(timer.end_time);
+        const nowDate = new Date();
+        
+        return timer.is_recurring || endTime >= nowDate;
+      });
 
-      console.log("Received upcoming timers:", processedTimers.length);
-      setUpcomingBreakTimers(processedTimers);
+      console.log("Processed upcoming timers:", upcomingTimers.length);
+      setUpcomingBreakTimers(upcomingTimers);
     } catch (error) {
       console.error("Unexpected error fetching upcoming break timers:", error);
+      throw error;
     }
   };
 
@@ -239,6 +256,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         .update({ is_active: false })
         .eq('id', id);
         
+      console.log("Successfully deactivated timer:", id);
       await fetchActiveBreakTimers();
     } catch (error) {
       console.error("Error deactivating break timer:", error);
@@ -337,11 +355,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           .eq('is_recurring', false);
       }
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('break_timer')
-        .insert({ ...timer, is_active: true });
+        .insert({ ...timer, is_active: true })
+        .select();
 
       if (error) {
+        console.error("Error creating break timer:", error);
         toast({
           title: "خطأ",
           description: "حدث خطأ أثناء إنشاء مؤقت البريك",
@@ -350,6 +370,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return false;
       }
 
+      console.log("Successfully created break timer:", data);
       await fetchBreakTimer();
       await fetchActiveBreakTimers();
       await fetchUpcomingBreakTimers();
@@ -404,20 +425,28 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   useEffect(() => {
     const loadData = async () => {
       console.log("Initial data load");
-      await fetchBreakTimer();
-      await fetchActiveBreakTimers();
-      await fetchUpcomingBreakTimers();
-      await fetchNotifications();
+      try {
+        await fetchBreakTimer();
+        await fetchActiveBreakTimers();
+        await fetchUpcomingBreakTimers();
+        await fetchNotifications();
+      } catch (error) {
+        console.error("Error during initial data load:", error);
+      }
     };
     
     loadData();
     
     const interval = setInterval(async () => {
       console.log("Checking for updates...");
-      await fetchBreakTimer();
-      await fetchActiveBreakTimers();
-      await fetchUpcomingBreakTimers();
-      await fetchNotifications();
+      try {
+        await fetchBreakTimer();
+        await fetchActiveBreakTimers();
+        await fetchUpcomingBreakTimers();
+        await fetchNotifications();
+      } catch (error) {
+        console.error("Error during scheduled update:", error);
+      }
     }, 30000);
     
     return () => clearInterval(interval);
