@@ -82,7 +82,7 @@ export const NotificationModal: React.FC = () => {
         </DialogHeader>
         
         {imageUrl && (
-          <div className="my-8 w-full max-w-[800px] mx-auto">
+          <div className="my-8 w-full max-w-[1000px] mx-auto">
             <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg overflow-hidden shadow-lg">
               <img 
                 src={imageUrl} 
