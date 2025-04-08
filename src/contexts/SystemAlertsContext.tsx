@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -226,11 +227,25 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       });
       
       const upcomingTimers = processedTimers.filter(timer => {
+        const startTime = new Date(timer.start_time);
         const endTime = new Date(timer.end_time);
+        const now = new Date();
         
-        if (timer.is_recurring) return true;
+        if (timer.is_recurring) {
+          // For recurring timers, check if it's not currently active
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMinutes = currentHour * 60 + currentMinute;
+          
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startTimeMinutes = startHour * 60 + startMinute;
+          
+          return currentTimeMinutes < startTimeMinutes;
+        }
         
-        return endTime >= now;
+        // For one-time timers, only show if they haven't started yet
+        return startTime > now && endTime > now;
       });
 
       console.log("Processed upcoming timers:", upcomingTimers.length);
@@ -406,9 +421,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
       console.log("Successfully created break timer:", data);
       
-      await fetchBreakTimer();
-      await fetchActiveBreakTimers();
-      await fetchUpcomingBreakTimers();
+      // Fast fetch to update UI immediately
+      await Promise.all([
+        fetchBreakTimer(),
+        fetchActiveBreakTimers(),
+        fetchUpcomingBreakTimers()
+      ]);
       
       toast({
         title: "تم بنجاح",
@@ -457,6 +475,84 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  // Function to check and activate timers that are now ready to be active
+  const checkAndActivateTimers = async () => {
+    try {
+      const now = new Date();
+      
+      // Get all active timers from the database
+      const { data, error } = await supabase
+        .from('break_timer')
+        .select('*')
+        .eq('is_active', true);
+        
+      if (error) {
+        console.error("Error checking for timers to activate:", error);
+        return;
+      }
+      
+      if (!data || data.length === 0) return;
+      
+      // Check each timer to see if it should be active now
+      for (const dbTimer of data) {
+        const timer = {
+          id: dbTimer.id,
+          title: dbTimer.title,
+          start_time: dbTimer.start_time,
+          end_time: dbTimer.end_time,
+          is_active: !!dbTimer.is_active,
+          is_recurring: !!dbTimer.is_recurring
+        } as BreakTimer;
+        
+        const startTime = new Date(timer.start_time);
+        const endTime = new Date(timer.end_time);
+        
+        let shouldBeActive = false;
+        
+        if (timer.is_recurring) {
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMinutes = currentHour * 60 + currentMinute;
+          
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startTimeMinutes = startHour * 60 + startMinute;
+          
+          const endHour = endTime.getHours();
+          const endMinute = endTime.getMinutes();
+          const endTimeMinutes = endHour * 60 + endMinute;
+          
+          shouldBeActive = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+        } else {
+          shouldBeActive = now >= startTime && now <= endTime;
+        }
+        
+        // If timer should be active and doesn't match what's in our state, update state
+        if (shouldBeActive) {
+          const isInActiveState = activeBreakTimers.some(t => t.id === timer.id);
+          
+          if (!isInActiveState) {
+            console.log(`Timer ${timer.title} should be active but isn't in active state. Updating...`);
+            setActiveBreakTimers(prev => [...prev, timer]);
+            
+            if (!breakTimer) {
+              console.log("Setting active break timer:", timer);
+              setBreakTimer(timer);
+            }
+          }
+        } else {
+          // If timer shouldn't be active anymore
+          if (!timer.is_recurring && endTime < now) {
+            console.log(`Timer ${timer.title} has expired. Deactivating...`);
+            await deactivateBreakTimer(timer.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in checkAndActivateTimers:", error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       console.log("Initial data load");
@@ -465,6 +561,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         await fetchActiveBreakTimers();
         await fetchUpcomingBreakTimers();
         await fetchNotifications();
+        await checkAndActivateTimers(); // Check for timers that should be active
       } catch (error) {
         console.error("Error during initial data load:", error);
       }
@@ -472,6 +569,16 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     
     loadData();
     
+    // More frequent checks for better responsiveness
+    const frequentInterval = setInterval(async () => {
+      try {
+        await checkAndActivateTimers();
+      } catch (error) {
+        console.error("Error during frequent timer check:", error);
+      }
+    }, 10000); // Check every 10 seconds
+    
+    // Regular data refresh
     const interval = setInterval(async () => {
       console.log("Checking for updates...");
       try {
@@ -482,9 +589,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       } catch (error) {
         console.error("Error during scheduled update:", error);
       }
-    }, 60000);
+    }, 30000); // Regular refresh every 30 seconds
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(frequentInterval);
+      clearInterval(interval);
+    }
   }, []);
 
   return (

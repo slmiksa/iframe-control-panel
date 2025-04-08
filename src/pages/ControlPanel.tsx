@@ -204,22 +204,62 @@ const ControlPanel = () => {
       return;
     }
     
-    const success = await createBreakTimer({
-      title: breakTimerTitle,
-      start_time: breakTimerStart.toISOString(),
-      end_time: breakTimerEnd.toISOString(),
-      is_active: true,
-      is_recurring: isRecurring
-    });
+    try {
+      const newTimer = {
+        title: breakTimerTitle,
+        start_time: breakTimerStart.toISOString(),
+        end_time: breakTimerEnd.toISOString(),
+        is_active: true,
+        is_recurring: isRecurring
+      };
+      
+      if (!isRecurring) {
+        await supabase
+          .from('break_timer')
+          .update({ is_active: false })
+          .eq('is_active', true)
+          .eq('is_recurring', false);
+      }
+      
+      const { error, data } = await supabase
+        .from('break_timer')
+        .insert(newTimer)
+        .select();
+        
+      if (error) {
+        console.error("Error creating break timer:", error);
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء إنشاء مؤقت البريك",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    if (success) {
-      toast({
-        title: "نجاح",
-        description: isRecurring ? "تم إنشاء مؤقت متكرر بنجاح" : "تم إنشاء مؤقت البريك بنجاح"
-      });
+      console.log("Successfully created break timer:", data);
+      
       setBreakTimerTitle("");
       
+      toast({
+        title: "تم بنجاح",
+        description: isRecurring 
+          ? "تم إنشاء مؤقت البريك المتكرر وسيظهر في الوقت المحدد يوميا" 
+          : "تم إنشاء مؤقت البريك وسيظهر في الوقت المحدد",
+      });
+      
       fetchActiveBreakTimers();
+      
+      const timerComponents = document.querySelectorAll('[data-timer-list]');
+      if (timerComponents.length > 0) {
+        console.log("Forcing timer list components to refresh");
+      }
+    } catch (error) {
+      console.error("Error creating break timer:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ غير متوقع أثناء إنشاء المؤقت",
+        variant: "destructive"
+      });
     }
   };
 
@@ -489,7 +529,7 @@ const ControlPanel = () => {
           </CardContent>
         </Card>
         
-        <div className="space-y-6">
+        <div className="space-y-6" data-timer-list>
           <ActiveTimersList />
           <UpcomingTimersList />
         </div>

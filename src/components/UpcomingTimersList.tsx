@@ -5,8 +5,10 @@ import { Clock, AlertCircle } from "lucide-react";
 import { format } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 
 export const UpcomingTimersList: React.FC = () => {
+  const { fetchActiveBreakTimers, fetchUpcomingBreakTimers } = useSystemAlerts();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timers, setTimers] = useState<any[]>([]);
@@ -63,11 +65,29 @@ export const UpcomingTimersList: React.FC = () => {
         return timer;
       });
       
-      // Filter to only show upcoming and current timers
+      // Filter to only show upcoming timers (not yet active)
       const relevantTimers = processedTimers.filter(timer => {
+        const startTime = new Date(timer.start_time);
         const endTime = new Date(timer.end_time);
-        return timer.is_recurring || endTime >= now;
+        
+        // Logic to check if timer is upcoming (not currently active)
+        if (timer.is_recurring) {
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMinutes = currentHour * 60 + currentMinute;
+          
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startTimeMinutes = startHour * 60 + startMinute;
+          
+          return currentTimeMinutes < startTimeMinutes;
+        }
+        
+        // For one-time timers, show if start time is in the future
+        return now < startTime;
       });
+      
+      console.log(`Found ${relevantTimers.length} upcoming timers out of ${processedTimers.length} total timers`);
       
       setTimers(relevantTimers);
       
@@ -91,10 +111,10 @@ export const UpcomingTimersList: React.FC = () => {
   useEffect(() => {
     fetchTimersDirectly();
     
-    // Create a longer interval for refreshes to avoid UI flickering
+    // Create a shorter interval for checking upcoming timers that will become active soon
     const interval = setInterval(() => {
       fetchTimersDirectly();
-    }, 60000); // Refresh every 1 minute
+    }, 10000); // Refresh every 10 seconds for better reactivity
     
     return () => clearInterval(interval);
   }, []);
@@ -108,15 +128,34 @@ export const UpcomingTimersList: React.FC = () => {
   const getTimerStatus = (timer: { start_time: string; end_time: string }) => {
     const now = new Date();
     const startTime = new Date(timer.start_time);
-    const endTime = new Date(timer.end_time);
     
-    if (now < startTime) {
-      return "قادم";
-    } else if (now >= startTime && now <= endTime) {
-      return "جاري التنفيذ";
+    const secondsUntilStart = Math.round((startTime.getTime() - now.getTime()) / 1000);
+    
+    if (secondsUntilStart <= 60) { // Less than a minute
+      return "جاري التنشيط..."; // About to activate
+    } else if (secondsUntilStart <= 300) { // Less than 5 minutes
+      const minutes = Math.ceil(secondsUntilStart / 60);
+      return `قريباً (${minutes} دقائق)`; // Activating soon
     } else {
-      return "منتهي";
+      return "قادم"; // Upcoming
     }
+  };
+  
+  // Calculate time difference from now
+  const getTimeFromNow = (dateString: string) => {
+    const now = new Date();
+    const targetDate = new Date(dateString);
+    const diffMs = targetDate.getTime() - now.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+    
+    if (diffMins < 1) return "أقل من دقيقة";
+    if (diffMins < 60) return `${diffMins} دقيقة`;
+    
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    
+    if (mins === 0) return `${hours} ساعة`;
+    return `${hours} ساعة و ${mins} دقيقة`;
   };
   
   // Use stableTimersList for rendering to prevent flickering
@@ -165,8 +204,17 @@ export const UpcomingTimersList: React.FC = () => {
                   {formatDateTime(timer.start_time)} - {formatDateTime(timer.end_time)}
                   {timer.is_recurring && <span className="ml-2 text-blue-500">(يتكرر يوميا)</span>}
                 </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  يبدأ بعد: {getTimeFromNow(timer.start_time)}
+                </div>
               </div>
-              <div className={`text-xs ${getTimerStatus(timer) === "جاري التنفيذ" ? "text-green-500 font-bold" : "text-gray-500"}`}>
+              <div className={`text-xs ${
+                getTimerStatus(timer) === "جاري التنشيط..." 
+                  ? "text-orange-500 font-bold animate-pulse" 
+                  : getTimerStatus(timer).startsWith("قريباً") 
+                    ? "text-blue-500 font-bold"
+                    : "text-gray-500"
+              }`}>
                 {getTimerStatus(timer)}
               </div>
             </div>

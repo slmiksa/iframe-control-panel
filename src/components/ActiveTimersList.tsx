@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const ActiveTimersList: React.FC = () => {
-  const { closeBreakTimer } = useSystemAlerts();
+  const { closeBreakTimer, fetchActiveBreakTimers } = useSystemAlerts();
   const [activeTimers, setActiveTimers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -66,21 +66,70 @@ export const ActiveTimersList: React.FC = () => {
         : [];
         
       setActiveTimers(currentlyActiveTimers);
+      setIsLoading(false);
+
+      // Activate any timers that should be active but aren't showing in UI
+      await activateTimersIfNeeded(data || []);
     } catch (err) {
       console.error("Unexpected error fetching active timers:", err);
-    } finally {
       setIsLoading(false);
     }
   };
+
+  // Check if there are timers that should be active and trigger them
+  const activateTimersIfNeeded = async (timers: any[]) => {
+    try {
+      const now = new Date();
+      
+      // Find timers that should be active but might not be displaying
+      for (const timer of timers) {
+        const startTime = new Date(timer.start_time);
+        const endTime = new Date(timer.end_time);
+        
+        // Check if timer should be active
+        let shouldBeActive = false;
+        
+        if (timer.is_recurring) {
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMinutes = currentHour * 60 + currentMinute;
+          
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startTimeMinutes = startHour * 60 + startMinute;
+          
+          const endHour = endTime.getHours();
+          const endMinute = endTime.getMinutes();
+          const endTimeMinutes = endHour * 60 + endMinute;
+          
+          shouldBeActive = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+        } else {
+          shouldBeActive = now >= startTime && now <= endTime;
+        }
+        
+        // For debugging
+        if (shouldBeActive) {
+          console.log(`Timer ${timer.title} should be active. Current state: ${timer.is_active}`);
+        }
+      }
+      
+      // Call the global system alerts refresh to make sure modals appear
+      if (fetchActiveBreakTimers) {
+        await fetchActiveBreakTimers();
+      }
+    } catch (error) {
+      console.error("Error activating timers:", error);
+    }
+  };
   
-  // Update the list of active timers when component loads
+  // Update the list of active timers when component loads and every 15 seconds
   useEffect(() => {
     fetchActiveTimersDirectly();
     
-    // Refresh active timers list every 30 seconds
+    // Refresh active timers list every 15 seconds
     const interval = setInterval(() => {
       fetchActiveTimersDirectly();
-    }, 30000);
+    }, 15000);
     
     return () => clearInterval(interval);
   }, []);
