@@ -6,28 +6,45 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 const Login = () => {
   const { login } = useIframe();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (login(username, password)) {
-      navigate("/control-panel");
-      toast({
-        title: "تم تسجيل الدخول بنجاح",
-        description: "مرحباً بك في لوحة التحكم",
-      });
-    } else {
+    setIsLoggingIn(true);
+    
+    try {
+      const success = await login(username, password);
+      
+      if (success) {
+        navigate("/control-panel");
+        toast({
+          title: "تم تسجيل الدخول بنجاح",
+          description: "مرحباً بك في لوحة التحكم",
+        });
+      } else {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+        description: "حدث خطأ أثناء محاولة تسجيل الدخول",
         variant: "destructive",
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -50,6 +67,7 @@ const Login = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin"
                   required
+                  disabled={isLoggingIn}
                 />
               </div>
               <div className="space-y-2">
@@ -61,9 +79,13 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  disabled={isLoggingIn}
                 />
               </div>
-              <Button type="submit" className="w-full">تسجيل الدخول</Button>
+              <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                {isLoggingIn ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                تسجيل الدخول
+              </Button>
             </form>
           </CardContent>
         </Card>

@@ -17,6 +17,8 @@ const ControlPanel = () => {
   // Admin management state
   const [newAdminUsername, setNewAdminUsername] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  const [isRemovingAdmin, setIsRemovingAdmin] = useState(false);
   
   const navigate = useNavigate();
 
@@ -72,7 +74,7 @@ const ControlPanel = () => {
     });
   };
   
-  const handleAddAdmin = (e: React.FormEvent) => {
+  const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newAdminUsername || !newAdminPassword) {
@@ -84,30 +86,73 @@ const ControlPanel = () => {
       return;
     }
     
-    const added = addAdmin(newAdminUsername, newAdminPassword);
+    setIsAddingAdmin(true);
     
-    if (added) {
-      toast({
-        title: "تم بنجاح",
-        description: "تمت إضافة المسؤول بنجاح",
-      });
-      setNewAdminUsername("");
-      setNewAdminPassword("");
-    } else {
+    try {
+      const added = await addAdmin(newAdminUsername, newAdminPassword);
+      
+      if (added) {
+        toast({
+          title: "تم بنجاح",
+          description: "تمت إضافة المسؤول بنجاح",
+        });
+        setNewAdminUsername("");
+        setNewAdminPassword("");
+      } else {
+        toast({
+          title: "خطأ",
+          description: "اسم المستخدم موجود بالفعل",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding admin:", error);
       toast({
         title: "خطأ",
-        description: "اسم المستخدم موجود بالفعل",
+        description: "حدث خطأ أثناء إضافة المسؤول",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingAdmin(false);
     }
   };
   
-  const handleRemoveAdmin = (username: string) => {
-    removeAdmin(username);
-    toast({
-      title: "تم بنجاح",
-      description: "تم حذف المسؤول بنجاح",
-    });
+  const handleRemoveAdmin = async (username: string) => {
+    if (username === "admin") {
+      toast({
+        title: "خطأ",
+        description: "لا يمكن حذف المسؤول الافتراضي",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsRemovingAdmin(true);
+    
+    try {
+      const removed = await removeAdmin(username);
+      if (removed) {
+        toast({
+          title: "تم بنجاح",
+          description: "تم حذف المسؤول بنجاح",
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ أثناء حذف المسؤول",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error removing admin:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حذف المسؤول",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemovingAdmin(false);
+    }
   };
 
   return (
@@ -194,7 +239,8 @@ const ControlPanel = () => {
                       />
                     </div>
                     <div className="flex items-end">
-                      <Button type="submit" className="w-full md:w-auto">
+                      <Button type="submit" className="w-full md:w-auto" disabled={isAddingAdmin}>
+                        {isAddingAdmin ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
                         إضافة مسؤول جديد
                       </Button>
                     </div>
@@ -210,22 +256,36 @@ const ControlPanel = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {admins.map((admin) => (
-                        <TableRow key={admin.username}>
-                          <TableCell>{admin.username}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveAdmin(admin.username)}
-                              disabled={admin.username === "admin"} // Prevent removing the default admin
-                              title={admin.username === "admin" ? "لا يمكن حذف المسؤول الافتراضي" : "حذف المسؤول"}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4">
+                            <Loader2 className="animate-spin mx-auto" size={24} />
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : admins.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4">
+                            لا يوجد مسؤولين
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        admins.map((admin) => (
+                          <TableRow key={admin.id || admin.username}>
+                            <TableCell>{admin.username}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveAdmin(admin.username)}
+                                disabled={admin.username === "admin" || isRemovingAdmin} // Prevent removing the default admin
+                                title={admin.username === "admin" ? "لا يمكن حذف المسؤول الافتراضي" : "حذف المسؤول"}
+                              >
+                                {isRemovingAdmin ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
