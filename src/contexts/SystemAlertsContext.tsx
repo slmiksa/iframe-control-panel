@@ -50,7 +50,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
-      setBreakTimer(data);
+      setBreakTimer(data as BreakTimer);
     } catch (error) {
       console.error("Unexpected error fetching break timer:", error);
     }
@@ -69,7 +69,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
-      setNotifications(data || []);
+      setNotifications(data as Notification[] || []);
     } catch (error) {
       console.error("Unexpected error fetching notifications:", error);
     }
@@ -80,11 +80,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       // First, deactivate any existing active break timers
       await supabase
         .from('break_timer')
-        .update({ is_active: false });
+        .update({ is_active: false } as any)
+        .eq('is_active', true);
 
       const { error } = await supabase
         .from('break_timer')
-        .insert({ ...timer, is_active: true });
+        .insert({ ...timer, is_active: true } as any);
 
       if (error) {
         toast({
@@ -107,7 +108,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     try {
       const { error } = await supabase
         .from('notifications')
-        .insert({ ...notification, is_active: true });
+        .insert({ ...notification, is_active: true } as any);
 
       if (error) {
         toast({

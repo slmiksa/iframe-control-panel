@@ -2,7 +2,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
-import Image from 'next/image';
 
 export const NotificationModal: React.FC = () => {
   const { notifications } = useSystemAlerts();
@@ -16,21 +15,19 @@ export const NotificationModal: React.FC = () => {
     <Dialog open={!!notification}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{notification.title}</DialogTitle>
+          <DialogTitle>{notification?.title}</DialogTitle>
         </DialogHeader>
         
-        {notification.content && (
+        {notification?.content && (
           <DialogDescription>{notification.content}</DialogDescription>
         )}
         
-        {notification.image_url && (
+        {notification?.image_url && (
           <div className="w-full flex justify-center">
-            <Image 
+            <img 
               src={notification.image_url} 
               alt={notification.title} 
-              width={300} 
-              height={300} 
-              className="object-cover"
+              className="object-cover max-w-full max-h-[300px]"
             />
           </div>
         )}

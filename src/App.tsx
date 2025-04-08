@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { IframeProvider } from "./contexts/IframeContext";
 import { SystemAlertsProvider } from "./contexts/SystemAlertsContext";
 import { useIframe } from "./contexts/IframeContext";
+import { useEffect } from "react";
+import { createNotificationsBucket } from "./integrations/supabase/createStorageBucket";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ControlPanel from "./pages/ControlPanel";
@@ -26,6 +28,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const queryClient = new QueryClient();
+
+// Initialize storage bucket
+useEffect(() => {
+  createNotificationsBucket();
+}, []);
 
 const AppRoutes = () => {
   return (
