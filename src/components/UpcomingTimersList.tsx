@@ -6,67 +6,90 @@ import { Clock, AlertCircle } from "lucide-react";
 import { format } from 'date-fns';
 import { toast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 export const UpcomingTimersList: React.FC = () => {
-  const { upcomingBreakTimers, fetchUpcomingBreakTimers } = useSystemAlerts();
+  const { fetchUpcomingBreakTimers } = useSystemAlerts();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  const [stableTimersList, setStableTimersList] = useState([]);
+  const [timers, setTimers] = useState<any[]>([]);
   
-  // Update list of upcoming timers when component loads
-  useEffect(() => {
-    console.log("UpcomingTimersList component mounted");
-    
-    const fetchTimers = async () => {
-      try {
-        if (!isRefreshing && !hasInitiallyLoaded) {
-          setIsLoading(true);
-        }
-        setError(null);
-        await fetchUpcomingBreakTimers();
-        console.log("Successfully fetched upcoming timers:", upcomingBreakTimers.length);
-        
-        // Only update the stable list if we have data or if it's the initial load
-        if (upcomingBreakTimers.length > 0 || !hasInitiallyLoaded) {
-          setStableTimersList(upcomingBreakTimers);
-        }
-        
-        // Mark as initially loaded after first successful fetch
-        if (!hasInitiallyLoaded) {
-          setHasInitiallyLoaded(true);
-        }
-      } catch (error) {
-        console.error("Failed to fetch upcoming timers:", error);
+  // Directly fetch timers from database to ensure UI stability
+  const fetchTimersDirectly = async () => {
+    try {
+      setError(null);
+      
+      // Get all active timers from database
+      const { data, error: fetchError } = await supabase
+        .from('break_timer')
+        .select('*')
+        .eq('is_active', true)
+        .order('start_time', { ascending: true });
+      
+      if (fetchError) {
+        console.error("Error fetching timers:", fetchError);
         setError("فشل في تحميل المؤقتات القادمة");
-        // Only show toast for initial errors to avoid spam
-        if (!hasInitiallyLoaded && !isRefreshing) {
-          toast({
-            title: "خطأ في تحميل المؤقتات",
-            description: "فشل في تحميل قائمة المؤقتات القادمة، سيتم إعادة المحاولة تلقائيًا",
-            variant: "destructive"
-          });
-        }
-        // Even if there's an error, don't reset stable list if we've already loaded successfully before
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+        return;
       }
-    };
+      
+      if (!data || data.length === 0) {
+        setTimers([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      const now = new Date();
+      const processedTimers = data.map(timer => {
+        let startTime = new Date(timer.start_time);
+        let endTime = new Date(timer.end_time);
+        
+        // For recurring timers that are in the past, adjust to next occurrence
+        if (timer.is_recurring && endTime < now) {
+          const nextStartTime = new Date(startTime);
+          nextStartTime.setDate(nextStartTime.getDate() + 1);
+          
+          const nextEndTime = new Date(endTime);
+          nextEndTime.setDate(nextEndTime.getDate() + 1);
+          
+          return {
+            ...timer,
+            start_time: nextStartTime.toISOString(),
+            end_time: nextEndTime.toISOString()
+          };
+        }
+        
+        return timer;
+      });
+      
+      // Filter to only show upcoming and current timers
+      const relevantTimers = processedTimers.filter(timer => {
+        const endTime = new Date(timer.end_time);
+        return timer.is_recurring || endTime >= now;
+      });
+      
+      setTimers(relevantTimers);
+      
+      // Also update the context data
+      fetchUpcomingBreakTimers();
+    } catch (err) {
+      console.error("Unexpected error fetching timers:", err);
+      setError("حدث خطأ أثناء تحميل المؤقتات");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Fetch timers when component mounts
+  useEffect(() => {
+    fetchTimersDirectly();
     
-    // Fetch upcoming timers initially
-    fetchTimers();
-    
-    // Refresh upcoming timers list every 2 minutes (increased from 60s to reduce UI flicker further)
+    // Create a longer interval for refreshes to avoid UI flickering
     const interval = setInterval(() => {
-      console.log("Refreshing upcoming timers list");
-      setIsRefreshing(true);
-      fetchTimers();
-    }, 120000); // 2 minutes
+      fetchTimersDirectly();
+    }, 300000); // Refresh every 5 minutes instead of 2 minutes
     
     return () => clearInterval(interval);
-  }, [fetchUpcomingBreakTimers, upcomingBreakTimers]);
+  }, []);
   
   // Format date to show date and time in a readable format
   const formatDateTime = (dateString: string) => {
@@ -88,15 +111,14 @@ export const UpcomingTimersList: React.FC = () => {
     }
   };
   
-  // Show a stable UI that doesn't flicker during refreshes
   return (
     <Card>
       <CardHeader>
         <CardTitle>المؤقتات القادمة</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isLoading && !hasInitiallyLoaded ? (
-          // Only show loading skeletons on initial load, not on refreshes
+        {isLoading ? (
+          // Only show loading skeletons on initial load
           <>
             <div className="flex items-center justify-between border-b pb-2">
               <div className="w-full">
@@ -113,20 +135,17 @@ export const UpcomingTimersList: React.FC = () => {
               <Skeleton className="h-4 w-10" />
             </div>
           </>
-        ) : error && !hasInitiallyLoaded ? (
-          // Only show error message on initial load failures
+        ) : error ? (
           <div className="flex flex-col items-center justify-center py-4 text-red-500">
             <AlertCircle className="mb-2" />
             <div>{error}</div>
           </div>
-        ) : stableTimersList.length === 0 ? (
-          // Show stable "no timers" message
+        ) : timers.length === 0 ? (
           <div className="text-center py-4 text-gray-500">
             لا توجد مؤقتات مجدولة للمستقبل
           </div>
         ) : (
-          // Display stable timer list - this doesn't change during refreshes
-          stableTimersList.map(timer => (
+          timers.map(timer => (
             <div key={timer.id} className="flex items-center justify-between border-b pb-2">
               <div>
                 <div className="font-medium">{timer.title}</div>
@@ -141,10 +160,6 @@ export const UpcomingTimersList: React.FC = () => {
               </div>
             </div>
           ))
-        )}
-        {/* Hidden refresh indicator to avoid UI jumps */}
-        {isRefreshing && hasInitiallyLoaded && (
-          <div className="hidden">Refreshing...</div>
         )}
       </CardContent>
     </Card>
