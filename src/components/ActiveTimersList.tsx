@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 export const ActiveTimersList: React.FC = () => {
-  const { closeBreakTimer, fetchActiveBreakTimers } = useSystemAlerts();
+  const { closeBreakTimer } = useSystemAlerts();
   const [activeTimers, setActiveTimers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -66,9 +66,6 @@ export const ActiveTimersList: React.FC = () => {
         : [];
         
       setActiveTimers(currentlyActiveTimers);
-      
-      // Also update context data
-      fetchActiveBreakTimers();
     } catch (err) {
       console.error("Unexpected error fetching active timers:", err);
     } finally {

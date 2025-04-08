@@ -1,18 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
-import { useSystemAlerts } from '@/contexts/SystemAlertsContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, AlertCircle } from "lucide-react";
 import { format } from 'date-fns';
-import { toast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
 export const UpcomingTimersList: React.FC = () => {
-  const { fetchUpcomingBreakTimers } = useSystemAlerts();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timers, setTimers] = useState<any[]>([]);
+  const [stableTimersList, setStableTimersList] = useState<any[]>([]);
   
   // Directly fetch timers from database to ensure UI stability
   const fetchTimersDirectly = async () => {
@@ -33,6 +31,10 @@ export const UpcomingTimersList: React.FC = () => {
       }
       
       if (!data || data.length === 0) {
+        // Only update the stable list if we're not loading anymore
+        if (!isLoading) {
+          setStableTimersList([]);
+        }
         setTimers([]);
         setIsLoading(false);
         return;
@@ -69,8 +71,14 @@ export const UpcomingTimersList: React.FC = () => {
       
       setTimers(relevantTimers);
       
-      // Also update the context data
-      fetchUpcomingBreakTimers();
+      // Only update the stable list if there are actual changes or on initial load
+      if (
+        isLoading || 
+        stableTimersList.length !== relevantTimers.length || 
+        JSON.stringify(stableTimersList) !== JSON.stringify(relevantTimers)
+      ) {
+        setStableTimersList(relevantTimers);
+      }
     } catch (err) {
       console.error("Unexpected error fetching timers:", err);
       setError("حدث خطأ أثناء تحميل المؤقتات");
@@ -86,7 +94,7 @@ export const UpcomingTimersList: React.FC = () => {
     // Create a longer interval for refreshes to avoid UI flickering
     const interval = setInterval(() => {
       fetchTimersDirectly();
-    }, 300000); // Refresh every 5 minutes instead of 2 minutes
+    }, 60000); // Refresh every 1 minute
     
     return () => clearInterval(interval);
   }, []);
@@ -110,6 +118,9 @@ export const UpcomingTimersList: React.FC = () => {
       return "منتهي";
     }
   };
+  
+  // Use stableTimersList for rendering to prevent flickering
+  const displayTimers = stableTimersList;
   
   return (
     <Card>
@@ -140,12 +151,12 @@ export const UpcomingTimersList: React.FC = () => {
             <AlertCircle className="mb-2" />
             <div>{error}</div>
           </div>
-        ) : timers.length === 0 ? (
+        ) : displayTimers.length === 0 ? (
           <div className="text-center py-4 text-gray-500">
             لا توجد مؤقتات مجدولة للمستقبل
           </div>
         ) : (
-          timers.map(timer => (
+          displayTimers.map(timer => (
             <div key={timer.id} className="flex items-center justify-between border-b pb-2">
               <div>
                 <div className="font-medium">{timer.title}</div>
