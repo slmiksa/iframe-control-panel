@@ -22,7 +22,8 @@ type Notification = {
   id: string;
   title: string;
   content: string | null;
-  image_path: string | null;
+  image_path?: string | null; // Make image_path optional
+  image_url?: string | null;  // Add image_url as an optional field
   start_time: string;
   end_time: string;
   is_active: boolean;
@@ -103,7 +104,8 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           id: notification.id,
           title: notification.title,
           content: notification.content,
-          image_path: notification.image_path || notification.image_url, // Handle both field names
+          image_url: notification.image_url, // Set image_url from database
+          image_path: notification.image_url, // For compatibility with components expecting image_path
           start_time: notification.start_time,
           end_time: notification.end_time,
           is_active: notification.is_active

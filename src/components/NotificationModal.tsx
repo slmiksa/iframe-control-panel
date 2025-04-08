@@ -12,12 +12,15 @@ export const NotificationModal: React.FC = () => {
   
   useEffect(() => {
     const fetchImage = async () => {
-      if (activeNotification?.image_path) {
+      // Use either image_path or image_url from the notification
+      const imagePath = activeNotification?.image_path || activeNotification?.image_url;
+      
+      if (imagePath) {
         try {
           const { data, error } = await supabase
             .storage
             .from('notification_images')
-            .download(activeNotification.image_path);
+            .download(imagePath);
           
           if (error) {
             console.error("Error downloading notification image:", error);
