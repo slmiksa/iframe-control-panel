@@ -34,7 +34,7 @@ type SystemAlertsContextType = {
   dismissBreakTimer: () => void;
   dismissNotification: () => void;
   fetchActiveBreakTimers: () => Promise<void>;
-  fetchUpcomingBreakTimers: () => Promise<void>;
+  fetchUpcomingBreakTimers: () => Promise<BreakTimer[]>;
   closeBreakTimer: (timerId?: string) => Promise<void>;
   breakTimer: BreakTimer | null;
 };
@@ -103,7 +103,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           id: notification.id,
           title: notification.title,
           content: notification.content,
-          image_path: notification.image_path, // Using image_path instead of image_url
+          image_path: notification.image_path || notification.image_url, // Handle both field names
           start_time: notification.start_time,
           end_time: notification.end_time,
           is_active: notification.is_active
@@ -131,6 +131,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       
       if (error) {
         console.error("Error fetching upcoming break timers:", error);
+        return [];
       }
       
       console.log("Processed upcoming timers:", data?.length);
@@ -192,7 +193,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   }, [activeBreakTimer, dismissBreakTimer, fetchActiveBreakTimers]);
 
-  const value = useMemo(() => ({
+  const value: SystemAlertsContextType = {
     activeBreakTimer,
     activeNotification,
     dismissBreakTimer,
@@ -201,7 +202,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     fetchUpcomingBreakTimers,
     closeBreakTimer,
     breakTimer, // Added for backwards compatibility
-  }), [activeBreakTimer, activeNotification, dismissBreakTimer, dismissNotification, fetchActiveBreakTimers, fetchUpcomingBreakTimers, closeBreakTimer, breakTimer]);
+  };
 
   return (
     <SystemAlertsContext.Provider value={value}>

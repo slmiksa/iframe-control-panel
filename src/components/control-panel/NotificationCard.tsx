@@ -160,18 +160,19 @@ export const NotificationCard = () => {
       // Get the notification to check if it has an image
       const { data: notification, error: fetchError } = await supabase
         .from('notifications')
-        .select('image_path')
+        .select('*')
         .eq('id', id)
         .single();
         
       if (fetchError) throw fetchError;
       
-      // Delete image if exists
-      if (notification?.image_path) {
+      // Delete image if exists (handle both image_path and image_url)
+      const imagePath = notification?.image_path || notification?.image_url;
+      if (imagePath) {
         const { error: deleteImageError } = await supabase
           .storage
           .from('notification_images')
-          .remove([notification.image_path]);
+          .remove([imagePath]);
           
         if (deleteImageError) {
           console.error("Error deleting notification image:", deleteImageError);
