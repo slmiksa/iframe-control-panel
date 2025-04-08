@@ -64,7 +64,7 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
         if (adminError) {
           console.error("Error fetching admin users:", adminError);
         } else if (adminData) {
-          setAdmins(adminData as Admin[]);
+          setAdmins(adminData as unknown as Admin[]);
         }
       } catch (error) {
         console.error("Error:", error);
@@ -120,14 +120,15 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const { data: adminData, error } = await supabase
-        .from('admin_users')
+      // Cast to the correct type to avoid TypeScript errors
+      const { data, error } = await supabase
+        .from('admin_users' as any)
         .select('*')
         .eq('username', username)
         .eq('password', password)
         .single();
 
-      if (error || !adminData) {
+      if (error || !data) {
         return false;
       }
 
@@ -142,8 +143,9 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
   const addAdmin = async (username: string, password: string): Promise<boolean> => {
     // Check if admin already exists
     try {
+      // Cast to the correct type to avoid TypeScript errors
       const { data: existingAdmin, error: checkError } = await supabase
-        .from('admin_users')
+        .from('admin_users' as any)
         .select('*')
         .eq('username', username)
         .single();
@@ -155,7 +157,7 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Add the new admin
       const { error: insertError } = await supabase
-        .from('admin_users')
+        .from('admin_users' as any)
         .insert([{ username, password }]);
 
       if (insertError) {
@@ -165,11 +167,11 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Refresh the admin list
       const { data: newAdminList, error: fetchError } = await supabase
-        .from('admin_users')
+        .from('admin_users' as any)
         .select('id, username, password');
 
       if (!fetchError && newAdminList) {
-        setAdmins(newAdminList as Admin[]);
+        setAdmins(newAdminList as unknown as Admin[]);
       }
 
       return true;
@@ -186,8 +188,9 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
+      // Cast to the correct type to avoid TypeScript errors
       const { error } = await supabase
-        .from('admin_users')
+        .from('admin_users' as any)
         .delete()
         .eq('username', username);
 
@@ -198,11 +201,11 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Refresh the admin list
       const { data: updatedAdminList, error: fetchError } = await supabase
-        .from('admin_users')
+        .from('admin_users' as any)
         .select('id, username, password');
 
       if (!fetchError && updatedAdminList) {
-        setAdmins(updatedAdminList as Admin[]);
+        setAdmins(updatedAdminList as unknown as Admin[]);
       }
 
       return true;
