@@ -116,7 +116,7 @@ export const BreakTimerModal: React.FC = () => {
   // If no break timer or no remaining time, render nothing
   if (!breakTimer || !timeRemaining) return null;
 
-  // Create a wrapper function for the closeBreakTimer to fix the TypeScript error
+  // Create a wrapper function for the closeBreakTimer to handle React event
   const handleCloseTimer = () => {
     closeBreakTimer();
   };
