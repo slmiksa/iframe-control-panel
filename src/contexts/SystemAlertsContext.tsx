@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -86,7 +85,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
             console.log("Non-recurring timer outside active window, deactivating:", timerData.id);
             await deactivateBreakTimer(timerData.id);
           } else if (endTime < now) {
-            // For recurring timers, reschedule to the next day
             console.log("Recurring timer ended, rescheduling for next day:", timerData.id);
             await rescheduleRecurringTimer(timerData);
           }
@@ -100,12 +98,10 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // New function to reschedule recurring timers for the next day
   const rescheduleRecurringTimer = async (timer: BreakTimer) => {
     try {
       console.log("Rescheduling recurring timer for next day:", timer.id);
       
-      // Calculate next day's start and end times
       const startTime = new Date(timer.start_time);
       const endTime = new Date(timer.end_time);
       
@@ -115,7 +111,11 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       const nextEndTime = new Date(endTime);
       nextEndTime.setDate(nextEndTime.getDate() + 1);
       
+      const originalDurationMs = endTime.getTime() - startTime.getTime();
+      const nextEndTimeCheck = new Date(nextStartTime.getTime() + originalDurationMs);
+      
       console.log(`Updating timer from ${startTime.toISOString()} to ${nextStartTime.toISOString()}`);
+      console.log(`Duration check: original=${originalDurationMs}ms, calculated=${nextEndTimeCheck.getTime() - nextStartTime.getTime()}ms`);
       
       const { error } = await supabase
         .from('break_timer')
@@ -191,7 +191,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
                 deactivateBreakTimer(timer.id);
                 return false;
               } else if (timer.is_recurring && !isActive && new Date(timer.end_time) < now) {
-                // For recurring timers, reschedule to the next day
                 console.log("Recurring timer ended, rescheduling for next day:", timer.id);
                 rescheduleRecurringTimer(timer);
                 return false;
@@ -277,7 +276,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         const now = new Date();
         
         if (timer.is_recurring) {
-          // For recurring timers, check if it's not currently active
           const currentHour = now.getHours();
           const currentMinute = now.getMinutes();
           const currentTimeMinutes = currentHour * 60 + currentMinute;
@@ -289,7 +287,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           return currentTimeMinutes < startTimeMinutes;
         }
         
-        // For one-time timers, only show if they haven't started yet
         return startTime > now && endTime > now;
       });
 
@@ -324,7 +321,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     try {
       console.log("Deactivating break timer:", id);
       
-      // Get timer info first to check if it's recurring
       const { data: timerData, error: fetchError } = await supabase
         .from('break_timer')
         .select('*')
@@ -336,7 +332,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
       
-      // For recurring timers, don't deactivate but reschedule for next day
       if (timerData && timerData.is_recurring) {
         const timer = {
           id: timerData.id,
@@ -359,7 +354,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
       
-      // For non-recurring timers, proceed with deactivation
       const { error } = await supabase
         .from('break_timer')
         .update({ is_active: false })
@@ -398,7 +392,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           .single();
         
         if (data) {
-          // For recurring timers, we update the times to the next day instead of deactivating
           if (data.is_recurring) {
             const timer = {
               id: data.id,
@@ -411,12 +404,17 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
             
             await rescheduleRecurringTimer(timer);
             
+            setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
+            
             toast({
               title: "تم الإغلاق",
               description: "تم إغلاق المؤقت المتكرر وسيظهر غدا في نفس الوقت",
             });
+            
+            setTimeout(() => {
+              fetchUpcomingBreakTimers();
+            }, 1000);
           } else {
-            // For non-recurring timers, deactivate them
             const { error } = await supabase
               .from('break_timer')
               .update({ is_active: false })
@@ -427,21 +425,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
               throw error;
             }
             
+            setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
+            setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== id));
+            
             toast({
               title: "تم الإغلاق",
               description: "تم إغلاق مؤقت الراحة بنجاح",
             });
-          }
-          
-          setActiveBreakTimers(prev => prev.filter(timer => timer.id !== id));
-          
-          // Refresh upcoming timers to show rescheduled recurring timers
-          if (data.is_recurring) {
-            setTimeout(() => {
-              fetchUpcomingBreakTimers();
-            }, 1000);
-          } else {
-            setUpcomingBreakTimers(prev => prev.filter(timer => timer.id !== id));
           }
         }
       } catch (error) {
@@ -468,7 +458,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         
         setActiveBreakTimers(prev => prev.filter(timer => timer.id !== breakTimer.id));
         
-        // Refresh upcoming timers to show rescheduled recurring timers
         setTimeout(() => {
           fetchUpcomingBreakTimers();
         }, 1000);
@@ -545,7 +534,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
       console.log("Successfully created break timer:", data);
       
-      // Fast fetch to update UI immediately
       await Promise.all([
         fetchBreakTimer(),
         fetchActiveBreakTimers(),
@@ -590,7 +578,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       await fetchNotifications();
       toast({
         title: "تم بنجاح",
-        description: "تم إنشاء الإشعار وسيظهر في الوقت المحدد",
+        description: "تم إن��اء الإشعار وسيظهر في الوقت المحدد",
       });
       return true;
     } catch (error) {
@@ -599,12 +587,10 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  // Function to check and activate timers that are now ready to be active
   const checkAndActivateTimers = async () => {
     try {
       const now = new Date();
       
-      // Get all active timers from the database
       const { data, error } = await supabase
         .from('break_timer')
         .select('*')
@@ -617,7 +603,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       
       if (!data || data.length === 0) return;
       
-      // Check each timer to see if it should be active now
       for (const dbTimer of data) {
         const timer = {
           id: dbTimer.id,
@@ -648,7 +633,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           
           shouldBeActive = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
           
-          // Check if the recurring timer has ended and needs to be rescheduled for next day
           if (!shouldBeActive && endTime < now) {
             console.log("Recurring timer has expired for today, rescheduling for tomorrow:", timer.id);
             await rescheduleRecurringTimer(timer);
@@ -658,7 +642,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           shouldBeActive = now >= startTime && now <= endTime;
         }
         
-        // If timer should be active and doesn't match what's in our state, update state
         if (shouldBeActive) {
           const isInActiveState = activeBreakTimers.some(t => t.id === timer.id);
           
@@ -672,7 +655,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
             }
           }
         } else {
-          // If timer shouldn't be active anymore
           if (!timer.is_recurring && endTime < now) {
             console.log(`Timer ${timer.title} has expired. Deactivating...`);
             await deactivateBreakTimer(timer.id);
@@ -692,7 +674,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         await fetchActiveBreakTimers();
         await fetchUpcomingBreakTimers();
         await fetchNotifications();
-        await checkAndActivateTimers(); // Check for timers that should be active
+        await checkAndActivateTimers();
       } catch (error) {
         console.error("Error during initial data load:", error);
       }
@@ -700,16 +682,14 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     
     loadData();
     
-    // More frequent checks for better responsiveness
     const frequentInterval = setInterval(async () => {
       try {
         await checkAndActivateTimers();
       } catch (error) {
         console.error("Error during frequent timer check:", error);
       }
-    }, 10000); // Check every 10 seconds
+    }, 10000);
     
-    // Regular data refresh
     const interval = setInterval(async () => {
       console.log("Checking for updates...");
       try {
@@ -720,7 +700,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       } catch (error) {
         console.error("Error during scheduled update:", error);
       }
-    }, 30000); // Regular refresh every 30 seconds
+    }, 30000);
     
     return () => {
       clearInterval(frequentInterval);

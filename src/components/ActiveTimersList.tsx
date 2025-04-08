@@ -84,19 +84,21 @@ export const ActiveTimersList: React.FC = () => {
       for (const timer of timers) {
         if (!timer.is_recurring) continue;
         
+        const startTime = new Date(timer.start_time);
         const endTime = new Date(timer.end_time);
         
         // If recurring timer has ended, reschedule it
         if (endTime < now) {
           console.log(`Recurring timer ${timer.id} (${timer.title}) has ended. Rescheduling for next day.`);
           
-          const startTime = new Date(timer.start_time);
+          // Calculate the original duration to ensure it doesn't get doubled
+          const originalDurationMs = endTime.getTime() - startTime.getTime();
           
           const nextStartTime = new Date(startTime);
           nextStartTime.setDate(nextStartTime.getDate() + 1);
           
-          const nextEndTime = new Date(endTime);
-          nextEndTime.setDate(nextEndTime.getDate() + 1);
+          // Calculate end time based on original duration
+          const nextEndTime = new Date(nextStartTime.getTime() + originalDurationMs);
           
           const { error } = await supabase
             .from('break_timer')
