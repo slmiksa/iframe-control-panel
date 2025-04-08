@@ -33,7 +33,6 @@ export const createNotificationsBucket = async () => {
     }
     
     // Update bucket policies to make it public
-    // The setPublic method doesn't exist on StorageFileApi, so we use updateBucket instead
     const { error: policyError } = await supabase
       .storage
       .updateBucket('notifications', {

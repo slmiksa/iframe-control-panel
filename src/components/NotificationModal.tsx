@@ -10,6 +10,7 @@ export const NotificationModal: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [currentNotification, setCurrentNotification] = useState<typeof notifications[0] | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (notifications.length > 0) {
@@ -25,6 +26,7 @@ export const NotificationModal: React.FC = () => {
         const notification = validNotifications[0];
         setCurrentNotification(notification);
         setOpen(true);
+        setImageError(false);
         
         // Get public URL for image if there is one
         if (notification.image_url) {
@@ -46,15 +48,25 @@ export const NotificationModal: React.FC = () => {
 
   const getPublicImageUrl = async (path: string) => {
     try {
+      console.log("Getting image URL for path:", path);
+      
       const { data } = supabase.storage
         .from('notifications')
         .getPublicUrl(path);
-        
+      
+      console.log("Image public URL:", data.publicUrl);  
       setImageUrl(data.publicUrl);
+      setImageError(false);
     } catch (error) {
       console.error('Error getting image URL:', error);
+      setImageError(true);
       setImageUrl(null);
     }
+  };
+
+  const handleImageError = () => {
+    console.log("Image failed to load");
+    setImageError(true);
   };
 
   const handleClose = async () => {
@@ -71,7 +83,7 @@ export const NotificationModal: React.FC = () => {
       if (!isOpen && currentNotification) handleClose();
       setOpen(isOpen);
     }}>
-      <DialogContent>
+      <DialogContent className="max-w-md mx-auto">
         <DialogHeader>
           <DialogTitle>{currentNotification.title}</DialogTitle>
           {currentNotification.content && (
@@ -79,18 +91,19 @@ export const NotificationModal: React.FC = () => {
           )}
         </DialogHeader>
         
-        {imageUrl && (
+        {imageUrl && !imageError && (
           <div className="w-full flex justify-center py-4">
             <img 
               src={imageUrl}
               alt={currentNotification.title} 
-              className="object-cover max-w-full max-h-[300px]"
+              className="object-cover max-w-full max-h-[300px] rounded-md"
+              onError={handleImageError}
             />
           </div>
         )}
         
         <DialogFooter>
-          <Button onClick={handleClose} variant="outline">
+          <Button onClick={handleClose} variant="outline" className="w-full">
             إغلاق
           </Button>
         </DialogFooter>

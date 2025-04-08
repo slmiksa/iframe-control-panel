@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { SimpleTimePicker } from "@/components/SimpleTimePicker";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { createNotificationsBucket } from "@/integrations/supabase/createStorageBucket";
 
 type NotificationCardProps = {
   createNotification: (notification: {
@@ -29,63 +30,91 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
     endTime.setHours(endTime.getHours() + 1);
     return endTime;
   });
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    // Ensure the storage bucket exists
+    createNotificationsBucket();
+  }, []);
 
   const handleCreateNotification = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
     
-    if (!notificationTitle) {
-      toast({
-        title: "خطأ",
-        description: "يرجى إدخال عنوان للإشعار",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (notificationEnd.getTime() <= notificationStart.getTime()) {
-      toast({
-        title: "خطأ",
-        description: "يجب أن يكون وقت الإنتهاء بعد وقت البدء",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    let imageUrl = "";
-    if (notificationImage) {
-      const { data, error } = await supabase.storage
-        .from('notifications')
-        .upload(`${Date.now()}_${notificationImage.name}`, notificationImage);
-      
-      if (error) {
+    try {
+      if (!notificationTitle) {
         toast({
           title: "خطأ",
-          description: "حدث خطأ أثناء رفع الصورة",
+          description: "يرجى إدخال عنوان للإشعار",
           variant: "destructive"
         });
+        setIsUploading(false);
         return;
       }
+      
+      if (notificationEnd.getTime() <= notificationStart.getTime()) {
+        toast({
+          title: "خطأ",
+          description: "يجب أن يكون وقت الإنتهاء بعد وقت البدء",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        return;
+      }
+      
+      let imageUrl = "";
+      if (notificationImage) {
+        const fileName = `${Date.now()}_${notificationImage.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        
+        const { data, error } = await supabase.storage
+          .from('notifications')
+          .upload(fileName, notificationImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (error) {
+          console.error("Storage upload error:", error);
+          toast({
+            title: "خطأ",
+            description: `حدث خطأ أثناء رفع الصورة: ${error.message}`,
+            variant: "destructive"
+          });
+          setIsUploading(false);
+          return;
+        }
 
-      imageUrl = data?.path || "";
-    }
+        imageUrl = data?.path || "";
+        console.log("Image uploaded successfully:", imageUrl);
+      }
 
-    const success = await createNotification({
-      title: notificationTitle,
-      content: notificationContent,
-      image_url: imageUrl,
-      start_time: notificationStart.toISOString(),
-      end_time: notificationEnd.toISOString(),
-      is_active: true
-    });
-
-    if (success) {
-      toast({
-        title: "نجاح",
-        description: "تم إنشاء الإشعار بنجاح"
+      const success = await createNotification({
+        title: notificationTitle,
+        content: notificationContent,
+        image_url: imageUrl,
+        start_time: notificationStart.toISOString(),
+        end_time: notificationEnd.toISOString(),
+        is_active: true
       });
-      setNotificationTitle("");
-      setNotificationContent("");
-      setNotificationImage(null);
+
+      if (success) {
+        toast({
+          title: "نجاح",
+          description: "تم إنشاء الإشعار بنجاح"
+        });
+        setNotificationTitle("");
+        setNotificationContent("");
+        setNotificationImage(null);
+      }
+    } catch (error) {
+      console.error("Error in handleCreateNotification:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ غير متوقع أثناء إنشاء الإشعار",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -110,12 +139,17 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
             onChange={(e) => setNotificationContent(e.target.value)}
             className="mb-4"
           />
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setNotificationImage(e.target.files?.[0] || null)}
-            className="mb-4"
-          />
+          <div className="mb-4">
+            <label htmlFor="notification-image" className="block text-sm font-medium mb-1">
+              صورة الإشعار (اختياري)
+            </label>
+            <Input
+              id="notification-image"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setNotificationImage(e.target.files?.[0] || null)}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <SimpleTimePicker 
               label="وقت البدء"
@@ -128,7 +162,9 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
               onChange={setNotificationEnd}
             />
           </div>
-          <Button type="submit" className="w-full">إنشاء الإشعار</Button>
+          <Button type="submit" className="w-full" disabled={isUploading}>
+            {isUploading ? 'جاري الإنشاء...' : 'إنشاء الإشعار'}
+          </Button>
         </form>
       </CardContent>
     </Card>
