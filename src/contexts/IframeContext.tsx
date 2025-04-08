@@ -10,14 +10,21 @@ interface IframeContextProps {
   setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
   login: (username: string, password: string) => boolean;
   isLoading: boolean;
+  admins: Admin[];
+  addAdmin: (username: string, password: string) => boolean;
+  removeAdmin: (username: string) => void;
 }
 
-// Create a more specific type for the iframe_urls table rows
 type IframeUrl = {
   id: string;
   url: string;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type Admin = {
+  username: string;
+  password: string;
 };
 
 const IframeContext = createContext<IframeContextProps | undefined>(undefined);
@@ -26,6 +33,9 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
   const [iframeUrl, setIframeUrlState] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [admins, setAdmins] = useState<Admin[]>([
+    { username: "admin", password: "admin" } // Default admin
+  ]);
 
   // Fetch the URL from the database on initial load
   useEffect(() => {
@@ -98,11 +108,35 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = (username: string, password: string): boolean => {
-    if (username === "admin" && password === "admin") {
+    const adminExists = admins.find(
+      admin => admin.username === username && admin.password === password
+    );
+    
+    if (adminExists) {
       setIsLoggedIn(true);
       return true;
     }
     return false;
+  };
+
+  const addAdmin = (username: string, password: string): boolean => {
+    // Check if admin already exists
+    if (admins.some(admin => admin.username === username)) {
+      return false;
+    }
+
+    // Add the new admin
+    setAdmins([...admins, { username, password }]);
+    return true;
+  };
+
+  const removeAdmin = (username: string): void => {
+    // Don't allow removing the default admin
+    if (username === "admin") {
+      return;
+    }
+    
+    setAdmins(admins.filter(admin => admin.username !== username));
   };
 
   return (
@@ -112,7 +146,10 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
       isLoggedIn, 
       setIsLoggedIn, 
       login,
-      isLoading
+      isLoading,
+      admins,
+      addAdmin,
+      removeAdmin
     }}>
       {children}
     </IframeContext.Provider>
