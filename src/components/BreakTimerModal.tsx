@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog";
 
 export const BreakTimerModal: React.FC = () => {
-  const { breakTimer, closeBreakTimer } = useSystemAlerts();
+  const { activeBreakTimer, closeBreakTimer } = useSystemAlerts();
   const [timeRemaining, setTimeRemaining] = useState<{
     hours: number;
     minutes: number;
@@ -19,7 +18,6 @@ export const BreakTimerModal: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [finishTimeoutId, setFinishTimeoutId] = useState<NodeJS.Timeout | null>(null);
   
-  // List of break time tips for employees
   const breakTips = [
     "قم بتمارين التمدد البسيطة لتخفيف التوتر",
     "اشرب كوب من الماء للحفاظ على الترطيب",
@@ -43,29 +41,25 @@ export const BreakTimerModal: React.FC = () => {
     "حضّر قائمة بأمور ممتعة ستفعلها بعد العمل"
   ];
 
-  // When breakTimer changes, update the open state immediately
   useEffect(() => {
-    if (breakTimer) {
+    if (activeBreakTimer) {
       setOpen(true);
       setIsFinished(false);
       
-      // Clear any existing timeout
       if (finishTimeoutId) {
         clearTimeout(finishTimeoutId);
         setFinishTimeoutId(null);
       }
       
-      // Calculate the initial time remaining
       const calculateRemaining = () => {
         const now = new Date();
-        const endTime = new Date(breakTimer.end_time);
+        const endTime = new Date(activeBreakTimer.end_time);
         
-        // If we're past the end time, show finish message
         if (now > endTime) {
           setIsFinished(true);
           const timeout = setTimeout(() => {
             closeBreakTimer();
-          }, 20 * 60 * 1000); // 20 minutes in milliseconds
+          }, 20 * 60 * 1000);
           setFinishTimeoutId(timeout);
           return null;
         }
@@ -78,11 +72,9 @@ export const BreakTimerModal: React.FC = () => {
         return { hours, minutes, seconds };
       };
       
-      // Set initial time
       const initialTime = calculateRemaining();
       setTimeRemaining(initialTime);
 
-      // Rotate through tips every 8 seconds
       const tipsInterval = setInterval(() => {
         setTipIndex(prevIndex => (prevIndex + 1) % breakTips.length);
       }, 8000);
@@ -102,22 +94,20 @@ export const BreakTimerModal: React.FC = () => {
         setFinishTimeoutId(null);
       }
     }
-  }, [breakTimer, closeBreakTimer, breakTips.length, finishTimeoutId]);
+  }, [activeBreakTimer, closeBreakTimer, finishTimeoutId]);
 
-  // Update the time every second
   useEffect(() => {
-    if (!breakTimer || !open || isFinished) return;
+    if (!activeBreakTimer || !open || isFinished) return;
     
     const calculateRemaining = () => {
       const now = new Date();
-      const endTime = new Date(breakTimer.end_time);
+      const endTime = new Date(activeBreakTimer.end_time);
       
-      // If we're past the end time, show finish message
       if (now > endTime) {
         setIsFinished(true);
         const timeout = setTimeout(() => {
           closeBreakTimer();
-        }, 20 * 60 * 1000); // 20 minutes in milliseconds
+        }, 20 * 60 * 1000);
         setFinishTimeoutId(timeout);
         return null;
       }
@@ -140,22 +130,18 @@ export const BreakTimerModal: React.FC = () => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [breakTimer, open, closeBreakTimer, isFinished]);
+  }, [activeBreakTimer, open, closeBreakTimer, isFinished]);
 
-  // If no break timer, render nothing
-  if (!breakTimer) return null;
+  if (!activeBreakTimer) return null;
 
-  // Create a wrapper function for the closeBreakTimer to handle React event
   const handleCloseTimer = () => {
     closeBreakTimer();
   };
 
-  // Check if we're in the last 2 minutes
   const isLastTwoMinutes = timeRemaining && 
     timeRemaining.hours === 0 && 
     timeRemaining.minutes < 2;
 
-  // Determine text color class based on time remaining
   const timerColorClass = isLastTwoMinutes 
     ? "text-red-500" 
     : "text-amber-400";
@@ -167,7 +153,7 @@ export const BreakTimerModal: React.FC = () => {
     }}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="text-3xl text-center">{breakTimer.title}</DialogTitle>
+          <DialogTitle className="text-3xl text-center">{activeBreakTimer.title}</DialogTitle>
         </DialogHeader>
         
         <div className="flex flex-col items-center justify-center py-8">
@@ -194,7 +180,7 @@ export const BreakTimerModal: React.FC = () => {
               </div>
               
               <div className="text-sm text-gray-500 mb-4">
-                من {new Date(breakTimer.start_time).toLocaleTimeString()} إلى {new Date(breakTimer.end_time).toLocaleTimeString()}
+                من {new Date(activeBreakTimer.start_time).toLocaleTimeString()} إلى {new Date(activeBreakTimer.end_time).toLocaleTimeString()}
               </div>
 
               <div className="mt-6 p-5 bg-amber-50 border border-amber-200 rounded-lg w-full max-w-md">
@@ -209,7 +195,7 @@ export const BreakTimerModal: React.FC = () => {
         
         <DialogFooter className="flex justify-center">
           <Button 
-            onClick={handleCloseTimer} 
+            onClick={() => closeBreakTimer()} 
             variant="outline" 
             className="px-8 py-3 text-lg border-amber-400 text-amber-700 hover:bg-amber-50"
           >
