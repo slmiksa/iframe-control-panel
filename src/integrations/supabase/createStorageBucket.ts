@@ -32,14 +32,18 @@ export const createNotificationsBucket = async () => {
       console.log('Notifications storage bucket created successfully');
     }
     
-    // Set the appropriate bucket policies to make images accessible
+    // Update bucket policies to make it public
+    // The setPublic method doesn't exist on StorageFileApi, so we use updateBucket instead
     const { error: policyError } = await supabase
       .storage
-      .from('notifications')
-      .setPublic();
+      .updateBucket('notifications', {
+        public: true
+      });
       
     if (policyError) {
       console.error('Error setting bucket policies:', policyError);
+    } else {
+      console.log('Notifications bucket policies updated successfully');
     }
   } catch (error) {
     console.error('Unexpected error creating storage bucket:', error);
