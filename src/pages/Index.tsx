@@ -2,13 +2,14 @@
 import React from "react";
 import { useIframe } from "@/contexts/IframeContext";
 import Clock from "@/components/Clock";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  const { iframeUrl } = useIframe();
+  const { iframeUrl, isLoading } = useIframe();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {!iframeUrl && (
+      {!iframeUrl && !isLoading && (
         <>
           <header className="bg-white shadow-sm p-4">
             <h1 className="text-2xl font-bold text-blue-700 text-center">Iframe | Trindsky</h1>
@@ -19,7 +20,12 @@ const Index = () => {
       )}
       
       <div className={`flex-grow flex flex-col items-center justify-center ${iframeUrl ? 'p-0 h-screen' : 'p-4'}`}>
-        {iframeUrl ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+            <p className="text-gray-500">جاري التحميل...</p>
+          </div>
+        ) : iframeUrl ? (
           <div className="w-full h-full">
             <iframe
               src={iframeUrl}
@@ -36,7 +42,7 @@ const Index = () => {
         )}
       </div>
 
-      {!iframeUrl && (
+      {!iframeUrl && !isLoading && (
         <footer className="bg-gray-100 p-4 text-center text-gray-500 text-sm">
           &copy; {new Date().getFullYear()} Trindsky - All rights reserved
         </footer>

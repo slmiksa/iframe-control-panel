@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 const ControlPanel = () => {
-  const { iframeUrl, setIframeUrl, setIsLoggedIn } = useIframe();
+  const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading } = useIframe();
   const [urlInput, setUrlInput] = useState(iframeUrl);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic URL validation
@@ -31,14 +33,28 @@ const ControlPanel = () => {
       return;
     }
 
-    setIframeUrl(formattedUrl);
-    toast({
-      title: "تم بنجاح",
-      description: "تم تحديث رابط الموقع",
-    });
+    setSubmitting(true);
     
-    // Navigate to the home page to view the iframe
-    navigate("/");
+    try {
+      await setIframeUrl(formattedUrl);
+      
+      toast({
+        title: "تم بنجاح",
+        description: "تم تحديث رابط الموقع",
+      });
+      
+      // Navigate to the home page to view the iframe
+      navigate("/");
+    } catch (error) {
+      console.error("Error updating URL:", error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تحديث الرابط",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -89,8 +105,12 @@ const ControlPanel = () => {
                       onChange={(e) => setUrlInput(e.target.value)}
                       placeholder="https://example.com"
                       className="flex-grow"
+                      disabled={isLoading || submitting}
                     />
-                    <Button type="submit">تطبيق</Button>
+                    <Button type="submit" disabled={isLoading || submitting}>
+                      {(isLoading || submitting) ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                      تطبيق
+                    </Button>
                   </div>
                   <p className="text-sm text-gray-500">
                     أدخل الرابط كاملاً بما في ذلك http:// أو https://
@@ -109,7 +129,14 @@ const ControlPanel = () => {
               <div className="space-y-2">
                 <div>
                   <span className="font-medium">الرابط النشط: </span>
-                  <span className="text-gray-600">{iframeUrl || "لا يوجد رابط محدد"}</span>
+                  {isLoading ? (
+                    <span className="flex items-center text-gray-400">
+                      <Loader2 className="animate-spin mr-2" size={16} />
+                      جاري التحميل...
+                    </span>
+                  ) : (
+                    <span className="text-gray-600">{iframeUrl || "لا يوجد رابط محدد"}</span>
+                  )}
                 </div>
               </div>
             </CardContent>
