@@ -36,7 +36,8 @@ export const createNotificationsBucket = async () => {
           
           if (createError.message.includes('row-level security') || 
               createError.message.includes('permission denied')) {
-            console.log('RLS policy error. Assuming bucket exists but is not accessible for creation.');
+            console.log('RLS policy error. The bucket exists but is not accessible for creation.');
+            console.log('This is normal if bucket was created via SQL migration.');
           } else {
             throw createError;
           }
@@ -51,11 +52,11 @@ export const createNotificationsBucket = async () => {
     
     // Test if we can get a public URL
     try {
-      const testUrl = supabase.storage
+      const { data } = supabase.storage
         .from('notifications')
         .getPublicUrl('test.png');
       
-      console.log('Successfully generated public URL:', testUrl);
+      console.log('Successfully generated public URL:', data?.publicUrl);
       return true;
     } catch (publicUrlError) {
       console.error('Error generating public URL:', publicUrlError);

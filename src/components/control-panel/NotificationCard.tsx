@@ -38,7 +38,15 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
     const prepareBucket = async () => {
       setIsPreparingBucket(true);
       try {
-        await createNotificationsBucket();
+        const result = await createNotificationsBucket();
+        console.log("Bucket preparation result:", result);
+        if (!result) {
+          toast({
+            title: "تنبيه",
+            description: "قد لا تظهر صور الإشعارات بشكل صحيح، يرجى التواصل مع المسؤول",
+            variant: "warning"
+          });
+        }
       } catch (error) {
         console.error("Error preparing notifications bucket:", error);
         toast({
@@ -85,13 +93,13 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
         try {
           // Generate a safe filename
           const fileExt = notificationImage.name.split('.').pop();
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+          const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
           
-          console.log("Uploading image:", fileName);
+          console.log("Uploading image:", safeFileName);
           
           const { data, error } = await supabase.storage
             .from('notifications')
-            .upload(fileName, notificationImage, {
+            .upload(safeFileName, notificationImage, {
               cacheControl: '3600',
               upsert: false
             });
@@ -104,7 +112,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
               variant: "destructive"
             });
           } else {
-            imageUrl = fileName;
+            imageUrl = safeFileName;
             console.log("Image uploaded successfully:", imageUrl);
           }
         } catch (uploadError) {
@@ -129,7 +137,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
       if (success) {
         toast({
           title: "نجاح",
-          description: "تم إنشاء الإشعار بنجاح"
+          description: "تم إنشاء الإشعار بنجاح وسيظهر لجميع الزوار"
         });
         setNotificationTitle("");
         setNotificationContent("");
@@ -151,7 +159,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({ createNotifi
     <Card>
       <CardHeader>
         <CardTitle>إنشاء إشعار</CardTitle>
-        <CardDescription>أنشئ إشعارا جديدا ليظهر للمستخدمين</CardDescription>
+        <CardDescription>أنشئ إشعارا جديدا ليظهر لجميع المستخدمين والزوار</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleCreateNotification} className="space-y-4">

@@ -300,6 +300,8 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
   const fetchNotifications = async () => {
     try {
+      console.log("Fetching notifications...");
+      
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -311,6 +313,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
+      console.log("Fetched notifications:", data);
       setNotifications(data as Notification[] || []);
     } catch (error) {
       console.error("Unexpected error fetching notifications:", error);
@@ -490,10 +493,21 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
 
   const closeNotification = async (id: string) => {
     try {
-      await supabase
+      console.log("Closing notification:", id);
+      
+      const { error } = await supabase
         .from('notifications')
         .update({ is_active: false })
         .eq('id', id);
+        
+      if (error) {
+        console.error("Error closing notification:", error);
+        throw error;
+      }
+      
+      console.log("Successfully closed notification");
+      
+      setNotifications(prev => prev.filter(n => n.id !== id));
       
       await fetchNotifications();
     } catch (error) {
@@ -562,11 +576,15 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     is_active?: boolean;
   }) => {
     try {
-      const { error } = await supabase
+      console.log("Creating notification:", notification);
+      
+      const { error, data } = await supabase
         .from('notifications')
-        .insert({ ...notification, is_active: true });
+        .insert({ ...notification, is_active: true })
+        .select();
 
       if (error) {
+        console.error("Error creating notification:", error);
         toast({
           title: "خطأ",
           description: "حدث خطأ أثناء إنشاء الإشعار",
@@ -574,11 +592,14 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         });
         return false;
       }
-
+      
+      console.log("Successfully created notification:", data);
+      
       await fetchNotifications();
+      
       toast({
         title: "تم بنجاح",
-        description: "تم إن��اء الإشعار وسيظهر في الوقت المحدد",
+        description: "تم إنشاء الإشعار وسيظهر في الوقت المحدد",
       });
       return true;
     } catch (error) {

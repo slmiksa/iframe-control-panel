@@ -27,7 +27,7 @@ export const NotificationModal: React.FC = () => {
       const validNotifications = notifications.filter(notification => {
         const startTime = new Date(notification.start_time);
         const endTime = new Date(notification.end_time);
-        return now >= startTime && now <= endTime;
+        return now >= startTime && now <= endTime && notification.is_active;
       });
       
       if (validNotifications.length > 0) {
