@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -100,4 +99,3 @@ const Login = () => {
 };
 
 export default Login;
-
