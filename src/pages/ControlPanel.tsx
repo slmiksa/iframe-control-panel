@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
@@ -24,7 +23,7 @@ const ControlPanel = () => {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    navigate("/login");
+    navigate("/admin/login");
     toast({
       title: "تم تسجيل الخروج",
       description: "تم تسجيل خروجك بنجاح",
