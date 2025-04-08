@@ -12,8 +12,8 @@ export const NotificationModal: React.FC = () => {
   
   useEffect(() => {
     const fetchImage = async () => {
-      // Use either image_path or image_url from the notification
-      const imagePath = activeNotification?.image_path || activeNotification?.image_url;
+      // Use image_url from the notification
+      const imagePath = activeNotification?.image_url;
       
       if (imagePath) {
         try {

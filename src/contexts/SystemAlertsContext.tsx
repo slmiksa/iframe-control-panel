@@ -1,11 +1,9 @@
-
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
-  useMemo,
 } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,8 +20,8 @@ type Notification = {
   id: string;
   title: string;
   content: string | null;
-  image_path?: string | null; // Make image_path optional
-  image_url?: string | null;  // Add image_url as an optional field
+  image_url: string | null;  // Primary field for image URL
+  image_path?: string | null; // For backward compatibility
   start_time: string;
   end_time: string;
   is_active: boolean;
@@ -98,13 +96,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
       
       if (notifications && notifications.length > 0) {
-        // Make sure we map to the correct property names
+        // Map database notification to our type
         const notification = notifications[0];
         setActiveNotification({
           id: notification.id,
           title: notification.title,
           content: notification.content,
-          image_url: notification.image_url, // Set image_url from database
+          image_url: notification.image_url,
           image_path: notification.image_url, // For compatibility with components expecting image_path
           start_time: notification.start_time,
           end_time: notification.end_time,

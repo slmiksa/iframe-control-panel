@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ export const NotificationCard = () => {
         .insert({
           title,
           content,
-          image_path: imagePath,
+          image_url: imagePath, // Changed from image_path to image_url
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           is_active: true
@@ -166,7 +167,7 @@ export const NotificationCard = () => {
         
       if (fetchError) throw fetchError;
       
-      // Delete image if exists (handle both image_path and image_url)
+      // Delete image if exists
       const imagePath = notification?.image_url;
       if (imagePath) {
         const { error: deleteImageError } = await supabase
