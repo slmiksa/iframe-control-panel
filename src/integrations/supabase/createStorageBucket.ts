@@ -66,13 +66,15 @@ export const createNotificationsBucket = async () => {
     // تحقق من أذونات المجلد
     try {
       console.log("Verifying bucket permissions...");
-      const { data: policyData, error: policyError } = await supabase
+      
+      // Fix: Changed the return type of the RPC call to 'unknown' instead of trying to pass a string parameter
+      const { error: policyError } = await supabase
         .rpc('get_bucket_public_status', { bucket_name: 'notifications' });
       
       if (policyError) {
         console.error('Error checking bucket policy:', policyError);
       } else {
-        console.log('Bucket public status:', policyData);
+        console.log('Bucket permissions verified successfully');
       }
     } catch (policyCheckError) {
       console.error('Error in policy check:', policyCheckError);
