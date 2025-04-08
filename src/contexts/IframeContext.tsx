@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 interface IframeContextProps {
   iframeUrl: string;
@@ -59,16 +60,18 @@ export const IframeProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Update the URL
-      const { error } = await supabase
-        .from('iframe_urls')
-        .update({ url })
-        .eq('id', idData.id);
+      if (idData) {
+        // Update the URL
+        const { error } = await supabase
+          .from('iframe_urls')
+          .update({ url })
+          .eq('id', idData.id);
 
-      if (error) {
-        console.error("Error updating iframe URL:", error);
-      } else {
-        setIframeUrlState(url);
+        if (error) {
+          console.error("Error updating iframe URL:", error);
+        } else {
+          setIframeUrlState(url);
+        }
       }
     } catch (error) {
       console.error("Error:", error);
