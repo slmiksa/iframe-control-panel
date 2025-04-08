@@ -68,57 +68,56 @@ export const ActiveTimersList: React.FC = () => {
       setActiveTimers(currentlyActiveTimers);
       setIsLoading(false);
 
-      // Activate any timers that should be active but aren't showing in UI
-      await activateTimersIfNeeded(data || []);
+      // Check if there are expired recurring timers that need to be moved to upcoming
+      await checkRecurringTimers(data || []);
     } catch (err) {
       console.error("Unexpected error fetching active timers:", err);
       setIsLoading(false);
     }
   };
 
-  // Check if there are timers that should be active and trigger them
-  const activateTimersIfNeeded = async (timers: any[]) => {
+  // Check if there are recurring timers that have ended and need to be rescheduled
+  const checkRecurringTimers = async (timers: any[]) => {
     try {
       const now = new Date();
       
-      // Find timers that should be active but might not be displaying
       for (const timer of timers) {
-        const startTime = new Date(timer.start_time);
+        if (!timer.is_recurring) continue;
+        
         const endTime = new Date(timer.end_time);
         
-        // Check if timer should be active
-        let shouldBeActive = false;
-        
-        if (timer.is_recurring) {
-          const currentHour = now.getHours();
-          const currentMinute = now.getMinutes();
-          const currentTimeMinutes = currentHour * 60 + currentMinute;
+        // If recurring timer has ended, reschedule it
+        if (endTime < now) {
+          console.log(`Recurring timer ${timer.id} (${timer.title}) has ended. Rescheduling for next day.`);
           
-          const startHour = startTime.getHours();
-          const startMinute = startTime.getMinutes();
-          const startTimeMinutes = startHour * 60 + startMinute;
+          const startTime = new Date(timer.start_time);
           
-          const endHour = endTime.getHours();
-          const endMinute = endTime.getMinutes();
-          const endTimeMinutes = endHour * 60 + endMinute;
+          const nextStartTime = new Date(startTime);
+          nextStartTime.setDate(nextStartTime.getDate() + 1);
           
-          shouldBeActive = currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
-        } else {
-          shouldBeActive = now >= startTime && now <= endTime;
-        }
-        
-        // For debugging
-        if (shouldBeActive) {
-          console.log(`Timer ${timer.title} should be active. Current state: ${timer.is_active}`);
+          const nextEndTime = new Date(endTime);
+          nextEndTime.setDate(nextEndTime.getDate() + 1);
+          
+          const { error } = await supabase
+            .from('break_timer')
+            .update({ 
+              start_time: nextStartTime.toISOString(),
+              end_time: nextEndTime.toISOString()
+            })
+            .eq('id', timer.id);
+          
+          if (error) {
+            console.error("Error rescheduling recurring timer:", error);
+          }
         }
       }
       
-      // Call the global system alerts refresh to make sure modals appear
+      // Get the system context to refresh
       if (fetchActiveBreakTimers) {
         await fetchActiveBreakTimers();
       }
     } catch (error) {
-      console.error("Error activating timers:", error);
+      console.error("Error checking recurring timers:", error);
     }
   };
   
