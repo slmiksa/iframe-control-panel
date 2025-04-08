@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -55,10 +56,14 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
-      // Explicitly type cast the data with a default for is_recurring
+      // Fix 1: Type assertion with proper handling of is_recurring
       const timerData = data ? {
-        ...data,
-        is_recurring: data.is_recurring ?? false
+        id: data.id,
+        title: data.title,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        is_active: !!data.is_active,
+        is_recurring: !!data.is_recurring
       } as BreakTimer : null;
       
       // Check if the break timer should be active based on current time
@@ -122,7 +127,17 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
-      setActiveBreakTimers(data as BreakTimer[]);
+      // Fix 2: Properly map the data to ensure correct typing
+      const timers = data ? data.map(item => ({
+        id: item.id,
+        title: item.title,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        is_active: !!item.is_active,
+        is_recurring: !!item.is_recurring
+      } as BreakTimer)) : [];
+
+      setActiveBreakTimers(timers);
     } catch (error) {
       console.error("Unexpected error fetching active break timers:", error);
     }
@@ -202,7 +217,14 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const createBreakTimer = async (timer: Omit<BreakTimer, 'id'>) => {
+  // Fix 3: Avoid potential circular reference by being explicit about the timer parameter type
+  const createBreakTimer = async (timer: {
+    title: string;
+    start_time: string;
+    end_time: string;
+    is_active?: boolean;
+    is_recurring?: boolean;
+  }) => {
     try {
       // We don't deactivate existing timers if it's recurring
       if (!timer.is_recurring) {
@@ -244,7 +266,15 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const createNotification = async (notification: Omit<Notification, 'id'>) => {
+  // Fix 4: Similar explicit typing for notification to avoid potential circular reference
+  const createNotification = async (notification: {
+    title: string;
+    content?: string;
+    image_url?: string;
+    start_time: string;
+    end_time: string;
+    is_active?: boolean;
+  }) => {
     try {
       const { error } = await supabase
         .from('notifications')
