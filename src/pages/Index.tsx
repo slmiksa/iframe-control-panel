@@ -1,6 +1,5 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
 import Clock from "@/components/Clock";
 
@@ -9,21 +8,19 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white shadow-sm p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-blue-700">Iframe | Trindsky</h1>
-        <Link 
-          to="/control-panel" 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-        >
-          Control Panel
-        </Link>
-      </header>
+      {!iframeUrl && (
+        <>
+          <header className="bg-white shadow-sm p-4">
+            <h1 className="text-2xl font-bold text-blue-700 text-center">Iframe | Trindsky</h1>
+          </header>
+          
+          <Clock />
+        </>
+      )}
       
-      <Clock />
-      
-      <div className="flex-grow flex flex-col items-center justify-center p-4">
+      <div className={`flex-grow flex flex-col items-center justify-center ${iframeUrl ? 'p-0 h-screen' : 'p-4'}`}>
         {iframeUrl ? (
-          <div className="w-full max-w-6xl h-[70vh] bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="w-full h-full">
             <iframe
               src={iframeUrl}
               className="w-full h-full border-0"
@@ -39,9 +36,11 @@ const Index = () => {
         )}
       </div>
 
-      <footer className="bg-gray-100 p-4 text-center text-gray-500 text-sm">
-        &copy; {new Date().getFullYear()} Trindsky - All rights reserved
-      </footer>
+      {!iframeUrl && (
+        <footer className="bg-gray-100 p-4 text-center text-gray-500 text-sm">
+          &copy; {new Date().getFullYear()} Trindsky - All rights reserved
+        </footer>
+      )}
     </div>
   );
 };

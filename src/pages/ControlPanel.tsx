@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/use-toast";
 
 const ControlPanel = () => {
-  const { iframeUrl, setIframeUrl } = useIframe();
+  const { iframeUrl, setIframeUrl, setIsLoggedIn } = useIframe();
   const [urlInput, setUrlInput] = useState(iframeUrl);
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +24,8 @@ const ControlPanel = () => {
     
     if (!formattedUrl) {
       toast({
-        title: "Error",
-        description: "Please enter a valid URL",
+        title: "خطأ",
+        description: "يرجى إدخال رابط صالح",
         variant: "destructive",
       });
       return;
@@ -32,8 +33,20 @@ const ControlPanel = () => {
 
     setIframeUrl(formattedUrl);
     toast({
-      title: "Success",
-      description: "Website URL has been updated",
+      title: "تم بنجاح",
+      description: "تم تحديث رابط الموقع",
+    });
+    
+    // Navigate to the home page to view the iframe
+    navigate("/");
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    navigate("/login");
+    toast({
+      title: "تم تسجيل الخروج",
+      description: "تم تسجيل خروجك بنجاح",
     });
   };
 
@@ -41,25 +54,33 @@ const ControlPanel = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-blue-700">Control Panel | Trindsky</h1>
-        <Link 
-          to="/" 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-        >
-          Back to Website
-        </Link>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => navigate("/")} 
+            variant="outline"
+          >
+            العودة إلى الموقع
+          </Button>
+          <Button 
+            onClick={handleLogout} 
+            variant="destructive"
+          >
+            تسجيل الخروج
+          </Button>
+        </div>
       </header>
 
       <main className="flex-grow container mx-auto p-6">
         <div className="grid grid-cols-1 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Website Embedding</CardTitle>
-              <CardDescription>Enter the URL of the website you want to display in the iframe</CardDescription>
+              <CardTitle>إدراج الموقع</CardTitle>
+              <CardDescription>أدخل رابط الموقع الذي تريد عرضه في الإطار</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col space-y-2">
-                  <label htmlFor="iframe-url" className="font-medium">Website URL</label>
+                  <label htmlFor="iframe-url" className="font-medium">رابط الموقع</label>
                   <div className="flex gap-2">
                     <Input
                       id="iframe-url"
@@ -69,10 +90,10 @@ const ControlPanel = () => {
                       placeholder="https://example.com"
                       className="flex-grow"
                     />
-                    <Button type="submit">Apply</Button>
+                    <Button type="submit">تطبيق</Button>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Enter the full URL including http:// or https:// prefix
+                    أدخل الرابط كاملاً بما في ذلك http:// أو https://
                   </p>
                 </div>
               </form>
@@ -81,14 +102,14 @@ const ControlPanel = () => {
           
           <Card>
             <CardHeader>
-              <CardTitle>Current Settings</CardTitle>
-              <CardDescription>View your current configuration</CardDescription>
+              <CardTitle>الإعدادات الحالية</CardTitle>
+              <CardDescription>عرض التكوين الحالي</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div>
-                  <span className="font-medium">Active URL: </span>
-                  <span className="text-gray-600">{iframeUrl || "No URL set"}</span>
+                  <span className="font-medium">الرابط النشط: </span>
+                  <span className="text-gray-600">{iframeUrl || "لا يوجد رابط محدد"}</span>
                 </div>
               </div>
             </CardContent>
