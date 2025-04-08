@@ -11,36 +11,21 @@ export type BreakTimer = {
   is_recurring?: boolean;
 };
 
-export type Notification = {
-  id: string;
-  title: string;
-  content?: string;
-  image_url?: string;
-  start_time: string;
-  end_time: string;
-  is_active: boolean;
-};
-
 interface SystemAlertsContextProps {
   breakTimer: BreakTimer | null;
-  notifications: Notification[];
   activeBreakTimers: BreakTimer[];
   upcomingBreakTimers: BreakTimer[];
   fetchBreakTimer: () => Promise<void>;
   fetchActiveBreakTimers: () => Promise<void>;
   fetchUpcomingBreakTimers: () => Promise<void>;
-  fetchNotifications: () => Promise<void>;
   createBreakTimer: (timer: Omit<BreakTimer, 'id'>) => Promise<boolean>;
-  createNotification: (notification: Omit<Notification, 'id'>) => Promise<boolean>;
   closeBreakTimer: (id?: string) => Promise<void>;
-  closeNotification: (id: string) => Promise<void>;
 }
 
 const SystemAlertsContext = createContext<SystemAlertsContextProps | undefined>(undefined);
 
 export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }) => {
   const [breakTimer, setBreakTimer] = useState<BreakTimer | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeBreakTimers, setActiveBreakTimers] = useState<BreakTimer[]>([]);
   const [upcomingBreakTimers, setUpcomingBreakTimers] = useState<BreakTimer[]>([]);
   
@@ -298,28 +283,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      console.log("Fetching notifications...");
-      
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('is_active', true)
-        .gte('end_time', new Date().toISOString());
-
-      if (error) {
-        console.error("Error fetching notifications:", error);
-        return;
-      }
-
-      console.log("Fetched notifications:", data);
-      setNotifications(data as Notification[] || []);
-    } catch (error) {
-      console.error("Unexpected error fetching notifications:", error);
-    }
-  };
-
   const deactivateBreakTimer = async (id: string) => {
     try {
       console.log("Deactivating break timer:", id);
@@ -491,30 +454,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const closeNotification = async (id: string) => {
-    try {
-      console.log("Closing notification:", id);
-      
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_active: false })
-        .eq('id', id);
-        
-      if (error) {
-        console.error("Error closing notification:", error);
-        throw error;
-      }
-      
-      console.log("Successfully closed notification");
-      
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      
-      await fetchNotifications();
-    } catch (error) {
-      console.error("Error closing notification:", error);
-    }
-  };
-
   const createBreakTimer = async (timer: {
     title: string;
     start_time: string;
@@ -563,47 +502,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       return true;
     } catch (error) {
       console.error("Error creating break timer:", error);
-      return false;
-    }
-  };
-
-  const createNotification = async (notification: {
-    title: string;
-    content?: string;
-    image_url?: string;
-    start_time: string;
-    end_time: string;
-    is_active?: boolean;
-  }) => {
-    try {
-      console.log("Creating notification:", notification);
-      
-      const { error, data } = await supabase
-        .from('notifications')
-        .insert({ ...notification, is_active: true })
-        .select();
-
-      if (error) {
-        console.error("Error creating notification:", error);
-        toast({
-          title: "خطأ",
-          description: "حدث خطأ أثناء إنشاء الإشعار",
-          variant: "destructive"
-        });
-        return false;
-      }
-      
-      console.log("Successfully created notification:", data);
-      
-      await fetchNotifications();
-      
-      toast({
-        title: "تم بنجاح",
-        description: "تم إنشاء الإشعار وسيظهر في الوقت المحدد",
-      });
-      return true;
-    } catch (error) {
-      console.error("Error creating notification:", error);
       return false;
     }
   };
@@ -694,8 +592,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         await fetchBreakTimer();
         await fetchActiveBreakTimers();
         await fetchUpcomingBreakTimers();
-        await fetchNotifications();
-        await checkAndActivateTimers();
       } catch (error) {
         console.error("Error during initial data load:", error);
       }
@@ -717,7 +613,6 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         await fetchBreakTimer();
         await fetchActiveBreakTimers();
         await fetchUpcomingBreakTimers();
-        await fetchNotifications();
       } catch (error) {
         console.error("Error during scheduled update:", error);
       }
@@ -732,17 +627,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   return (
     <SystemAlertsContext.Provider value={{
       breakTimer,
-      notifications,
       activeBreakTimers,
       upcomingBreakTimers,
       fetchBreakTimer,
       fetchActiveBreakTimers,
       fetchUpcomingBreakTimers,
-      fetchNotifications,
       createBreakTimer,
-      createNotification,
-      closeBreakTimer,
-      closeNotification
+      closeBreakTimer
     }}>
       {children}
     </SystemAlertsContext.Provider>

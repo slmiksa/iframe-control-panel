@@ -15,7 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
   const navigate = useNavigate();
-  const { createNotification, fetchActiveBreakTimers } = useSystemAlerts();
+  const { fetchActiveBreakTimers } = useSystemAlerts();
 
   useEffect(() => {
     fetchActiveBreakTimers();
@@ -81,7 +81,7 @@ const ControlPanel = () => {
         <TimerListSection />
       </div>
 
-      <NotificationCard createNotification={createNotification} />
+      <NotificationCard />
     </div>
   );
 };
