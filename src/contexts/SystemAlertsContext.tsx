@@ -86,12 +86,13 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
       
       // Fetch active notifications that haven't been dismissed
+      // With our new simplified system, we fetch the most recent notification
       const { data: notifications, error: notificationsError } = await supabase
         .from('notifications')
         .select('*')
         .eq('is_active', true)
-        .lte('start_time', now.toISOString())
-        .gte('end_time', now.toISOString());
+        .order('created_at', { ascending: false })
+        .limit(1);
         
       if (notificationsError) {
         console.error("Error fetching notifications:", notificationsError);
@@ -205,13 +206,28 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
           }
         }
       )
+      .on('postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications'
+        },
+        (payload) => {
+          console.log('New notification created:', payload);
+          
+          // If there's no active notification, show the new one
+          if (!activeNotification && !notificationsDismissed.has(payload.new.id)) {
+            fetchActiveBreakTimers(); // Refetch to update the UI with the new notification
+          }
+        }
+      )
       .subscribe();
     
     return () => {
       clearInterval(intervalId);
       supabase.removeChannel(channel);
     };
-  }, [fetchActiveBreakTimers, activeNotification]);
+  }, [fetchActiveBreakTimers, activeNotification, notificationsDismissed]);
 
   const dismissBreakTimer = useCallback(() => {
     setActiveBreakTimer(null);

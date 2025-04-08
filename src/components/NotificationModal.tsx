@@ -12,7 +12,7 @@ export const NotificationModal: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   
-  // تعيين حالة الفتح عند تغيير الإشعار النشط
+  // Set open state when active notification changes
   useEffect(() => {
     if (activeNotification) {
       setIsOpen(true);
@@ -60,47 +60,11 @@ export const NotificationModal: React.FC = () => {
       }
     };
   }, [activeNotification]);
-
-  // آلية مراقبة انتهاء وقت الإشعار والإغلاق التلقائي
-  useEffect(() => {
-    if (!activeNotification) return;
-    
-    const endTime = new Date(activeNotification.end_time).getTime();
-    const now = new Date().getTime();
-    const timeRemaining = endTime - now;
-    
-    console.log("Notification auto-close setup:", {
-      id: activeNotification.id,
-      title: activeNotification.title,
-      endTime: new Date(endTime).toLocaleString(),
-      now: new Date(now).toLocaleString(),
-      timeRemaining: Math.round(timeRemaining / 1000) + " seconds"
-    });
-
-    // إذا كان الوقت قد انتهى بالفعل
-    if (timeRemaining <= 0) {
-      console.log("Notification already expired, closing immediately");
-      handleClose();
-      return;
-    }
-
-    // إعداد مؤقت لإغلاق الإشعار عند انتهاء وقته
-    const timerId = setTimeout(() => {
-      console.log("Notification time expired, auto-closing", activeNotification.id);
-      handleClose();
-    }, timeRemaining);
-
-    // تنظيف المؤقت عند إزالة المكون
-    return () => {
-      console.log("Cleaning up notification timer");
-      clearTimeout(timerId);
-    };
-  }, [activeNotification]);
   
   const handleClose = () => {
     setIsOpen(false);
     
-    // تأخير إغلاق الإشعار بشكل كامل للسماح بانتهاء الانتقالات
+    // Delay full notification dismissal to allow for transitions
     setTimeout(() => {
       handleDismiss();
     }, 300);

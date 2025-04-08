@@ -4,20 +4,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Loader2, Image as ImageIcon, X, Send, Trash2 } from "lucide-react";
 
 export const NotificationCard = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [startTime, setStartTime] = useState<Date>(new Date());
-  const [endTime, setEndTime] = useState<Date>(() => {
-    const date = new Date();
-    date.setHours(date.getHours() + 24);
-    return date;
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -25,7 +18,7 @@ export const NotificationCard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchUpcomingNotifications();
+    fetchAllNotifications();
     
     // Set up realtime subscription for notifications changes
     const channel = supabase
@@ -38,7 +31,7 @@ export const NotificationCard = () => {
         },
         () => {
           console.log('Notification table changed, refreshing list');
-          fetchUpcomingNotifications();
+          fetchAllNotifications();
         }
       )
       .subscribe();
@@ -48,13 +41,13 @@ export const NotificationCard = () => {
     };
   }, []);
 
-  const fetchUpcomingNotifications = async () => {
+  const fetchAllNotifications = async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .order('start_time', { ascending: true });
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
@@ -63,7 +56,7 @@ export const NotificationCard = () => {
       console.error("Error fetching notifications:", error);
       toast({
         title: "خطأ في جلب الإشعارات",
-        description: "حدث خطأ أثناء جلب الإشعارات القادمة",
+        description: "حدث خطأ أثناء جلب الإشعارات",
         variant: "destructive",
       });
     } finally {
@@ -90,7 +83,7 @@ export const NotificationCard = () => {
     setImagePreview(null);
   };
 
-  const handleCreateNotification = async (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title) {
@@ -102,18 +95,15 @@ export const NotificationCard = () => {
       return;
     }
 
-    if (endTime <= startTime) {
-      toast({
-        title: "خطأ في التاريخ",
-        description: "يجب أن يكون وقت الانتهاء بعد وقت البدء",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
+      // Current date/time
+      const now = new Date();
+      // End date/time (24 hours from now)
+      const endTime = new Date();
+      endTime.setHours(endTime.getHours() + 24);
+      
       let imagePath = null;
       
       // Upload image if one is selected
@@ -132,14 +122,14 @@ export const NotificationCard = () => {
         imagePath = filePath;
       }
       
-      // Create notification record
+      // Create notification record - it's active immediately and valid for 24 hours
       const { error } = await supabase
         .from('notifications')
         .insert({
           title,
           content,
-          image_url: imagePath, // Changed from image_path to image_url
-          start_time: startTime.toISOString(),
+          image_url: imagePath,
+          start_time: now.toISOString(),
           end_time: endTime.toISOString(),
           is_active: true
         });
@@ -147,28 +137,21 @@ export const NotificationCard = () => {
       if (error) throw error;
       
       toast({
-        title: "تم إنشاء الإشعار",
-        description: "تم إنشاء الإشعار بنجاح وسيظهر في الوقت المحدد",
+        title: "تم إرسال الإشعار",
+        description: "تم إرسال الإشعار بنجاح لجميع الزوار",
       });
       
       // Reset form
       setTitle("");
       setContent("");
-      setStartTime(new Date());
-      const newEndTime = new Date();
-      newEndTime.setHours(newEndTime.getHours() + 24);
-      setEndTime(newEndTime);
       setImageFile(null);
       setImagePreview(null);
       
-      // Refresh notification list
-      fetchUpcomingNotifications();
-      
     } catch (error) {
-      console.error("Error creating notification:", error);
+      console.error("Error sending notification:", error);
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء إنشاء الإشعار",
+        description: "حدث خطأ أثناء إرسال الإشعار",
         variant: "destructive",
       });
     } finally {
@@ -238,10 +221,10 @@ export const NotificationCard = () => {
     <Card>
       <CardHeader>
         <CardTitle>إدارة الإشعارات</CardTitle>
-        <CardDescription>إنشاء وإدارة إشعارات للمستخدمين</CardDescription>
+        <CardDescription>إنشاء وإرسال إشعارات للمستخدمين</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleCreateNotification} className="space-y-4">
+        <form onSubmit={handleSendNotification} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium">عنوان الإشعار</label>
             <Input
@@ -302,36 +285,27 @@ export const NotificationCard = () => {
             )}
           </div>
           
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="startTime" className="text-sm font-medium">وقت بدء الإشعار</label>
-              <DateTimePicker date={startTime} setDate={setStartTime} />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="endTime" className="text-sm font-medium">وقت انتهاء الإشعار</label>
-              <DateTimePicker date={endTime} setDate={setEndTime} />
-            </div>
-          </div>
-          
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> جاري الإنشاء...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> جاري الإرسال...
               </>
             ) : (
-              "إنشاء الإشعار"
+              <>
+                <Send className="mr-2 h-4 w-4" /> إرسال الإشعار
+              </>
             )}
           </Button>
         </form>
 
         <div className="mt-8">
-          <h3 className="text-lg font-medium">الإشعارات القادمة</h3>
+          <h3 className="text-lg font-medium">الإشعارات الحالية</h3>
           {isLoading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
             </div>
           ) : upcomingNotifications.length === 0 ? (
-            <p className="py-6 text-center text-gray-500">لا توجد إشعارات قادمة</p>
+            <p className="py-6 text-center text-gray-500">لا توجد إشعارات</p>
           ) : (
             <div className="mt-4 space-y-4">
               {upcomingNotifications.map((notification) => (
@@ -342,9 +316,8 @@ export const NotificationCard = () => {
                       <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                         {notification.content || 'لا يوجد محتوى'}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-                        <span>البداية: {formatDate(notification.start_time)}</span>
-                        <span>النهاية: {formatDate(notification.end_time)}</span>
+                      <div className="mt-2 text-xs text-gray-500">
+                        <span>تم الإنشاء في: {formatDate(notification.created_at)}</span>
                       </div>
                     </div>
                     <Button 
@@ -352,7 +325,7 @@ export const NotificationCard = () => {
                       size="sm" 
                       onClick={() => handleDeleteNotification(notification.id)}
                     >
-                      حذف
+                      <Trash2 className="mr-2 h-4 w-4" /> حذف
                     </Button>
                   </div>
                 </div>
