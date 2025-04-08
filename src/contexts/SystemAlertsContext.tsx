@@ -2,14 +2,14 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
-// Types for Break Timer and Notifications
+// Update the BreakTimer type to include is_recurring as a possible property
 export type BreakTimer = {
   id: string;
   title: string;
   start_time: string;
   end_time: string;
   is_active: boolean;
-  is_recurring?: boolean;
+  is_recurring?: boolean; // Make is_recurring optional
 };
 
 export type Notification = {
@@ -55,16 +55,22 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
+      // Explicitly type cast the data with a default for is_recurring
+      const timerData = data ? {
+        ...data,
+        is_recurring: data.is_recurring ?? false
+      } as BreakTimer : null;
+      
       // Check if the break timer should be active based on current time
-      if (data) {
+      if (timerData) {
         const now = new Date();
-        const startTime = new Date(data.start_time);
-        const endTime = new Date(data.end_time);
+        const startTime = new Date(timerData.start_time);
+        const endTime = new Date(timerData.end_time);
         
         if (now < startTime || now > endTime) {
           // If current time is outside the timer range, don't set it as active
           // unless it's recurring and should be active today
-          if (data.is_recurring) {
+          if (timerData.is_recurring) {
             // For recurring timers, check if it should be active today based on time (not date)
             const currentTime = now.getHours() * 60 + now.getMinutes();
             const startDayTime = startTime.getHours() * 60 + startTime.getMinutes();
@@ -78,24 +84,24 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
               const adjustedEndTime = new Date(now);
               adjustedEndTime.setHours(endTime.getHours(), endTime.getMinutes(), 0);
               
-              const adjustedData = {
-                ...data,
+              const adjustedData: BreakTimer = {
+                ...timerData,
                 start_time: adjustedStartTime.toISOString(),
                 end_time: adjustedEndTime.toISOString()
               };
               
-              setBreakTimer(adjustedData as BreakTimer);
+              setBreakTimer(adjustedData);
               return;
             }
           }
           
           // Not recurring or not active today
-          await deactivateBreakTimer(data.id);
+          await deactivateBreakTimer(timerData.id);
           setBreakTimer(null);
           return;
         }
         
-        setBreakTimer(data as BreakTimer);
+        setBreakTimer(timerData);
       } else {
         setBreakTimer(null);
       }

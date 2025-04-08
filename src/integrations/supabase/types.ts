@@ -36,6 +36,7 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean | null
+          is_recurring: boolean | null
           start_time: string
           title: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean | null
+          is_recurring?: boolean | null
           start_time: string
           title: string
         }
@@ -52,6 +54,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean | null
+          is_recurring?: boolean | null
           start_time?: string
           title?: string
         }
