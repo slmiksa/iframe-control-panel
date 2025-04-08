@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIframe } from "@/contexts/IframeContext";
 import { Button } from "@/components/ui/button";
@@ -9,10 +8,12 @@ import { toast } from "@/components/ui/use-toast";
 import { Loader2, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSystemAlerts } from "@/contexts/SystemAlertsContext";
-import { Calendar } from "@/components/ui/calendar";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { SimpleTimePicker } from "@/components/SimpleTimePicker";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ActiveTimersList } from "@/components/ActiveTimersList";
 
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
@@ -25,17 +26,30 @@ const ControlPanel = () => {
   const [isRemovingAdmin, setIsRemovingAdmin] = useState(false);
   
   const navigate = useNavigate();
-  const { createBreakTimer, createNotification } = useSystemAlerts();
+  const { createBreakTimer, createNotification, activeBreakTimers, fetchActiveBreakTimers } = useSystemAlerts();
 
   const [breakTimerTitle, setBreakTimerTitle] = useState("");
   const [breakTimerStart, setBreakTimerStart] = useState<Date>(new Date());
-  const [breakTimerEnd, setBreakTimerEnd] = useState<Date>(new Date());
+  const [breakTimerEnd, setBreakTimerEnd] = useState<Date>(() => {
+    const endTime = new Date();
+    endTime.setMinutes(endTime.getMinutes() + 30);
+    return endTime;
+  });
+  const [isRecurring, setIsRecurring] = useState(false);
 
   const [notificationTitle, setNotificationTitle] = useState("");
   const [notificationContent, setNotificationContent] = useState("");
   const [notificationImage, setNotificationImage] = useState<File | null>(null);
   const [notificationStart, setNotificationStart] = useState<Date>(new Date());
-  const [notificationEnd, setNotificationEnd] = useState<Date>(new Date());
+  const [notificationEnd, setNotificationEnd] = useState<Date>(() => {
+    const endTime = new Date();
+    endTime.setHours(endTime.getHours() + 1);
+    return endTime;
+  });
+
+  useEffect(() => {
+    fetchActiveBreakTimers();
+  }, [fetchActiveBreakTimers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,26 +184,62 @@ const ControlPanel = () => {
 
   const handleCreateBreakTimer = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!breakTimerTitle) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال عنوان للمؤقت",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (breakTimerEnd.getTime() <= breakTimerStart.getTime()) {
+      toast({
+        title: "خطأ",
+        description: "يجب أن يكون وقت الإنتهاء بعد وقت البدء",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const success = await createBreakTimer({
       title: breakTimerTitle,
       start_time: breakTimerStart.toISOString(),
       end_time: breakTimerEnd.toISOString(),
-      is_active: true
+      is_active: true,
+      is_recurring: isRecurring
     });
 
     if (success) {
       toast({
         title: "نجاح",
-        description: "تم إنشاء مؤقت البريك بنجاح"
+        description: isRecurring ? "تم إنشاء مؤقت متكرر بنجاح" : "تم إنشاء مؤقت البريك بنجاح"
       });
       setBreakTimerTitle("");
-      setBreakTimerStart(new Date());
-      setBreakTimerEnd(new Date());
     }
   };
 
   const handleCreateNotification = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!notificationTitle) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال عنوان للإشعار",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (notificationEnd.getTime() <= notificationStart.getTime()) {
+      toast({
+        title: "خطأ",
+        description: "يجب أن يكون وقت الإنتهاء بعد وقت البدء",
+        variant: "destructive"
+      });
+      return;
+    }
     
     let imageUrl = "";
     if (notificationImage) {
@@ -226,8 +276,6 @@ const ControlPanel = () => {
       setNotificationTitle("");
       setNotificationContent("");
       setNotificationImage(null);
-      setNotificationStart(new Date());
-      setNotificationEnd(new Date());
     }
   };
 
@@ -396,42 +444,55 @@ const ControlPanel = () => {
         &copy; {new Date().getFullYear()} Trindsky - All rights reserved
       </footer>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>إنشاء مؤقت البريك</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateBreakTimer} className="space-y-4">
-            <Input
-              placeholder="عنوان مؤقت البريك"
-              value={breakTimerTitle}
-              onChange={(e) => setBreakTimerTitle(e.target.value)}
-              required
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label>وقت البدء</label>
-                <DateTimePicker 
-                  date={breakTimerStart}
-                  setDate={setBreakTimerStart}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>إنشاء مؤقت البريك</CardTitle>
+            <CardDescription>أنشئ مؤقت جديد للبريك إما لمرة واحدة أو متكرر يوميا</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateBreakTimer} className="space-y-4">
+              <Input
+                placeholder="عنوان مؤقت البريك"
+                value={breakTimerTitle}
+                onChange={(e) => setBreakTimerTitle(e.target.value)}
+                required
+                className="mb-4"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <SimpleTimePicker 
+                  label="وقت البدء"
+                  value={breakTimerStart}
+                  onChange={setBreakTimerStart}
+                />
+                <SimpleTimePicker 
+                  label="وقت الانتهاء"
+                  value={breakTimerEnd}
+                  onChange={setBreakTimerEnd}
                 />
               </div>
-              <div>
-                <label>وقت الانتهاء</label>
-                <DateTimePicker 
-                  date={breakTimerEnd}
-                  setDate={setBreakTimerEnd}
+              
+              <div className="flex items-center space-x-2 rtl:space-x-reverse mb-4">
+                <Switch 
+                  id="recurring-mode" 
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring} 
                 />
+                <Label htmlFor="recurring-mode">تكرار يومي (سيعمل المؤقت كل يوم في نفس الوقت)</Label>
               </div>
-            </div>
-            <Button type="submit">إنشاء مؤقت البريك</Button>
-          </form>
-        </CardContent>
-      </Card>
+              
+              <Button type="submit" className="w-full">إنشاء مؤقت البريك</Button>
+            </form>
+          </CardContent>
+        </Card>
+        
+        <ActiveTimersList />
+      </div>
 
       <Card>
         <CardHeader>
           <CardTitle>إنشاء إشعار</CardTitle>
+          <CardDescription>أنشئ إشعارا جديدا ليظهر للمستخدمين</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreateNotification} className="space-y-4">
@@ -440,34 +501,33 @@ const ControlPanel = () => {
               value={notificationTitle}
               onChange={(e) => setNotificationTitle(e.target.value)}
               required
+              className="mb-4"
             />
             <Textarea
               placeholder="محتوى الإشعار"
               value={notificationContent}
               onChange={(e) => setNotificationContent(e.target.value)}
+              className="mb-4"
             />
             <Input
               type="file"
               accept="image/*"
               onChange={(e) => setNotificationImage(e.target.files?.[0] || null)}
+              className="mb-4"
             />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label>وقت البدء</label>
-                <DateTimePicker 
-                  date={notificationStart}
-                  setDate={setNotificationStart}
-                />
-              </div>
-              <div>
-                <label>وقت الانتهاء</label>
-                <DateTimePicker 
-                  date={notificationEnd}
-                  setDate={setNotificationEnd}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <SimpleTimePicker 
+                label="وقت البدء"
+                value={notificationStart}
+                onChange={setNotificationStart}
+              />
+              <SimpleTimePicker 
+                label="وقت الانتهاء"
+                value={notificationEnd}
+                onChange={setNotificationEnd}
+              />
             </div>
-            <Button type="submit">إنشاء الإشعار</Button>
+            <Button type="submit" className="w-full">إنشاء الإشعار</Button>
           </form>
         </CardContent>
       </Card>
