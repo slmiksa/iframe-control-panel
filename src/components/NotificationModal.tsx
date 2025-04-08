@@ -13,7 +13,6 @@ export const NotificationModal: React.FC = () => {
   
   useEffect(() => {
     const fetchImage = async () => {
-      // Use image_url from the notification
       const imagePath = activeNotification?.image_url;
       
       if (imagePath) {
@@ -41,7 +40,6 @@ export const NotificationModal: React.FC = () => {
     if (activeNotification) {
       fetchImage();
     } else {
-      // Clean up any created object URLs when notification is dismissed
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
         setImageUrl(null);
@@ -56,7 +54,6 @@ export const NotificationModal: React.FC = () => {
   }, [activeNotification]);
   
   const handleDismiss = () => {
-    // Make sure to properly dismiss the notification
     if (imageUrl) {
       URL.revokeObjectURL(imageUrl);
       setImageUrl(null);
@@ -70,9 +67,9 @@ export const NotificationModal: React.FC = () => {
   
   return (
     <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
-      <DialogContent className="sm:max-w-[900px] md:max-w-[1100px] w-[98vw] max-h-[90vh] overflow-y-auto flex flex-col">
-        <DialogHeader className="text-center">
-          <DialogTitle className="text-4xl font-bold mb-6">{activeNotification.title}</DialogTitle>
+      <DialogContent className="sm:max-w-[1200px] md:max-w-[1400px] w-[98vw] max-h-[90vh] overflow-y-auto flex flex-col items-center">
+        <DialogHeader className="text-center w-full">
+          <DialogTitle className="text-5xl font-bold mb-6 text-center">{activeNotification.title}</DialogTitle>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -96,7 +93,7 @@ export const NotificationModal: React.FC = () => {
           </div>
         )}
         
-        <DialogDescription className="text-2xl leading-relaxed my-8 text-center px-4">
+        <DialogDescription className="text-3xl leading-relaxed my-8 text-center px-4 max-w-[800px]">
           {activeNotification.content}
         </DialogDescription>
         
