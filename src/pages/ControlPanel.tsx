@@ -10,7 +10,8 @@ import { CurrentSettingsCard } from "@/components/control-panel/CurrentSettingsC
 import { BreakTimerCard } from "@/components/control-panel/BreakTimerCard";
 import { NotificationCard } from "@/components/control-panel/NotificationCard";
 import { TimerListSection } from "@/components/control-panel/TimerListSection";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ControlPanel = () => {
   const { iframeUrl, setIframeUrl, setIsLoggedIn, isLoading, admins, addAdmin, removeAdmin } = useIframe();
@@ -70,18 +71,29 @@ const ControlPanel = () => {
             isLoading={isLoading} 
           />
         </div>
+
+        <Tabs defaultValue="timers" className="mt-8">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timers">أوقات البريك</TabsTrigger>
+            <TabsTrigger value="notifications">الإشعارات</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="timers" className="mt-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <BreakTimerCard fetchActiveBreakTimers={fetchActiveBreakTimers} />
+              <TimerListSection />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="notifications" className="mt-6">
+            <NotificationCard />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <footer className="bg-white p-4 text-center text-gray-500 text-sm">
         &copy; {new Date().getFullYear()} Trindsky - All rights reserved
       </footer>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <BreakTimerCard fetchActiveBreakTimers={fetchActiveBreakTimers} />
-        <TimerListSection />
-      </div>
-
-      <NotificationCard />
     </div>
   );
 };
