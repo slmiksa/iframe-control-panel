@@ -116,6 +116,11 @@ export const BreakTimerModal: React.FC = () => {
   // If no break timer or no remaining time, render nothing
   if (!breakTimer || !timeRemaining) return null;
 
+  // Create a wrapper function for the closeBreakTimer to fix the TypeScript error
+  const handleCloseTimer = () => {
+    closeBreakTimer();
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) closeBreakTimer();
@@ -154,7 +159,7 @@ export const BreakTimerModal: React.FC = () => {
         
         <DialogFooter className="flex justify-center">
           <Button 
-            onClick={closeBreakTimer} 
+            onClick={handleCloseTimer} 
             variant="outline" 
             className="px-8 py-2 text-lg border-amber-400 text-amber-700 hover:bg-amber-50"
           >
