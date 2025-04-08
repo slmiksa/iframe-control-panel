@@ -29,6 +29,8 @@ interface SystemAlertsContextProps {
   fetchNotifications: () => Promise<void>;
   createBreakTimer: (timer: Omit<BreakTimer, 'id'>) => Promise<boolean>;
   createNotification: (notification: Omit<Notification, 'id'>) => Promise<boolean>;
+  closeBreakTimer: () => Promise<void>;
+  closeNotification: (id: string) => Promise<void>;
 }
 
 const SystemAlertsContext = createContext<SystemAlertsContextProps | undefined>(undefined);
@@ -50,7 +52,23 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         return;
       }
 
-      setBreakTimer(data as BreakTimer);
+      // Check if the break timer should be active based on current time
+      if (data) {
+        const now = new Date();
+        const startTime = new Date(data.start_time);
+        const endTime = new Date(data.end_time);
+        
+        if (now < startTime || now > endTime) {
+          // If current time is outside the timer range, don't set it as active
+          await deactivateBreakTimer(data.id);
+          setBreakTimer(null);
+          return;
+        }
+        
+        setBreakTimer(data as BreakTimer);
+      } else {
+        setBreakTimer(null);
+      }
     } catch (error) {
       console.error("Unexpected error fetching break timer:", error);
     }
@@ -75,17 +93,57 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  const deactivateBreakTimer = async (id: string) => {
+    try {
+      await supabase
+        .from('break_timer')
+        .update({ is_active: false })
+        .eq('id', id);
+    } catch (error) {
+      console.error("Error deactivating break timer:", error);
+    }
+  };
+
+  const closeBreakTimer = async () => {
+    if (!breakTimer) return;
+    
+    try {
+      await deactivateBreakTimer(breakTimer.id);
+      setBreakTimer(null);
+      
+      toast({
+        title: "تم الإغلاق",
+        description: "تم إغلاق مؤقت الراحة بنجاح",
+      });
+    } catch (error) {
+      console.error("Error closing break timer:", error);
+    }
+  };
+
+  const closeNotification = async (id: string) => {
+    try {
+      await supabase
+        .from('notifications')
+        .update({ is_active: false })
+        .eq('id', id);
+      
+      await fetchNotifications();
+    } catch (error) {
+      console.error("Error closing notification:", error);
+    }
+  };
+
   const createBreakTimer = async (timer: Omit<BreakTimer, 'id'>) => {
     try {
       // First, deactivate any existing active break timers
       await supabase
         .from('break_timer')
-        .update({ is_active: false } as any)
+        .update({ is_active: false })
         .eq('is_active', true);
 
       const { error } = await supabase
         .from('break_timer')
-        .insert({ ...timer, is_active: true } as any);
+        .insert({ ...timer, is_active: true });
 
       if (error) {
         toast({
@@ -97,6 +155,10 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
 
       await fetchBreakTimer();
+      toast({
+        title: "تم بنجاح",
+        description: "تم إنشاء مؤقت البريك وسيظهر في الوقت المحدد",
+      });
       return true;
     } catch (error) {
       console.error("Error creating break timer:", error);
@@ -108,7 +170,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     try {
       const { error } = await supabase
         .from('notifications')
-        .insert({ ...notification, is_active: true } as any);
+        .insert({ ...notification, is_active: true });
 
       if (error) {
         toast({
@@ -120,6 +182,10 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
 
       await fetchNotifications();
+      toast({
+        title: "تم بنجاح",
+        description: "تم إنشاء الإشعار وسيظهر في الوقت المحدد",
+      });
       return true;
     } catch (error) {
       console.error("Error creating notification:", error);
@@ -131,6 +197,14 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   useEffect(() => {
     fetchBreakTimer();
     fetchNotifications();
+    
+    // Set up an interval to check for new alerts every minute
+    const interval = setInterval(() => {
+      fetchBreakTimer();
+      fetchNotifications();
+    }, 60000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -140,7 +214,9 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       fetchBreakTimer,
       fetchNotifications,
       createBreakTimer,
-      createNotification
+      createNotification,
+      closeBreakTimer,
+      closeNotification
     }}>
       {children}
     </SystemAlertsContext.Provider>
