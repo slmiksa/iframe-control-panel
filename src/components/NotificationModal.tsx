@@ -54,12 +54,21 @@ export const NotificationModal: React.FC = () => {
     };
   }, [activeNotification]);
   
+  const handleDismiss = () => {
+    // Make sure to properly dismiss the notification
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+      setImageUrl(null);
+    }
+    dismissNotification();
+  };
+  
   if (!activeNotification) {
     return null;
   }
   
   return (
-    <Dialog open={!!activeNotification} onOpenChange={() => dismissNotification()}>
+    <Dialog open={!!activeNotification} onOpenChange={handleDismiss}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">{activeNotification.title}</DialogTitle>
@@ -67,7 +76,7 @@ export const NotificationModal: React.FC = () => {
             variant="ghost" 
             size="icon" 
             className="absolute right-4 top-4" 
-            onClick={() => dismissNotification()}
+            onClick={handleDismiss}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
@@ -89,7 +98,7 @@ export const NotificationModal: React.FC = () => {
         </DialogDescription>
         
         <div className="mt-4 flex justify-end">
-          <Button onClick={() => dismissNotification()}>تم</Button>
+          <Button onClick={handleDismiss}>تم</Button>
         </div>
       </DialogContent>
     </Dialog>

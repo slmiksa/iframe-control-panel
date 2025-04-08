@@ -46,6 +46,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   const [activeBreakTimer, setActiveBreakTimer] = useState<BreakTimer | null>(null);
   const [activeNotification, setActiveNotification] = useState<Notification | null>(null);
   const [lastFetchedTime, setLastFetchedTime] = useState<Date>(new Date());
+  const [notificationsDismissed, setNotificationsDismissed] = useState<Set<string>>(new Set());
 
   // For legacy compatibility
   const breakTimer = activeBreakTimer;
@@ -82,7 +83,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
         }
       }
       
-      // Fetch active notifications
+      // Fetch active notifications that haven't been dismissed
       const { data: notifications, error: notificationsError } = await supabase
         .from('notifications')
         .select('*')
@@ -96,18 +97,24 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
       }
       
       if (notifications && notifications.length > 0) {
-        // Map database notification to our type
+        // Check if this notification has already been dismissed in this session
         const notification = notifications[0];
-        setActiveNotification({
-          id: notification.id,
-          title: notification.title,
-          content: notification.content,
-          image_url: notification.image_url,
-          image_path: notification.image_url, // For compatibility with components expecting image_path
-          start_time: notification.start_time,
-          end_time: notification.end_time,
-          is_active: notification.is_active
-        });
+        if (!notificationsDismissed.has(notification.id)) {
+          // Map database notification to our type
+          setActiveNotification({
+            id: notification.id,
+            title: notification.title,
+            content: notification.content,
+            image_url: notification.image_url,
+            image_path: notification.image_url, // For compatibility with components expecting image_path
+            start_time: notification.start_time,
+            end_time: notification.end_time,
+            is_active: notification.is_active
+          });
+        } else {
+          // If the notification was dismissed in this session, keep it null
+          setActiveNotification(null);
+        }
       } else {
         setActiveNotification(null);
       }
@@ -116,7 +123,7 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error("Error in fetchActiveBreakTimers:", error);
     }
-  }, []);
+  }, [notificationsDismissed]);
 
   // New method to fetch upcoming break timers
   const fetchUpcomingBreakTimers = useCallback(async () => {
@@ -159,8 +166,12 @@ export const SystemAlertsProvider = ({ children }: { children: React.ReactNode }
   }, []);
   
   const dismissNotification = useCallback(() => {
+    if (activeNotification) {
+      // Add the dismissed notification ID to the set of dismissed notifications
+      setNotificationsDismissed(prev => new Set(prev).add(activeNotification.id));
+    }
     setActiveNotification(null);
-  }, []);
+  }, [activeNotification]);
 
   // Method to close/deactivate a break timer
   const closeBreakTimer = useCallback(async (timerId?: string) => {
