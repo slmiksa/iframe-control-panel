@@ -36,7 +36,7 @@ const ControlPanel = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Logo size="small" />
+          <Logo size="control-panel" />
           <h1 className="text-2xl font-bold text-blue-700">Control Panel | Trindsky</h1>
         </div>
         <div className="flex gap-2">
