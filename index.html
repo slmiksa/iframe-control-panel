@@ -1,29 +1,162 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>iframe trindSky</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <meta name="description" content="تطبيق iframe trindSky" />
+    <meta name="author" content="trindSky" />
 
-    <meta property="og:title" content="Lovable Generated Project" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="iframe trindSky" />
+    <meta property="og:description" content="تطبيق iframe trindSky" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <link rel="icon" href="/lovable-uploads/76081be7-03f1-4cd8-a9f6-cd7a97e06625.png" type="image/png">
+    
+    <link rel="icon" href="assets/favicon.png" type="image/png">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- إضافة مكتبة Toastify للإشعارات -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
   </head>
 
   <body>
-    <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="app">
+      <!-- صفحة العرض الرئيسية - ستكون مرئية افتراضيًا -->
+      <div id="home-page" class="page">
+        <div id="iframe-container" class="full-height">
+          <!-- سيتم ملء هذا القسم إما بالـ iframe أو برسالة الترحيب -->
+        </div>
+      </div>
+
+      <!-- صفحة تسجيل الدخول -->
+      <div id="login-page" class="page hidden">
+        <div class="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
+          <div class="flex flex-col items-center mb-10">
+            <div class="logo logo-giant">
+              <!-- ستتم إضافة الشعار هنا من JavaScript -->
+            </div>
+          </div>
+          
+          <div class="w-full max-w-md px-4">
+            <div class="card">
+              <div class="card-header text-center">
+                <h2 class="card-title text-2xl font-bold text-blue-700">iframe trindSky</h2>
+                <p class="card-description">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
+              </div>
+              <div class="card-content">
+                <form id="login-form" class="space-y-4">
+                  <div class="space-y-2">
+                    <label for="username" class="font-medium">اسم المستخدم</label>
+                    <input
+                      id="username"
+                      type="text"
+                      class="input"
+                      placeholder="admin"
+                      required
+                    />
+                  </div>
+                  <div class="space-y-2">
+                    <label for="password" class="font-medium">كلمة المرور</label>
+                    <input
+                      id="password"
+                      type="password"
+                      class="input"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                  <button type="submit" class="button primary w-full">
+                    <span id="login-spinner" class="spinner hidden"></span>
+                    تسجيل الدخول
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- صفحة لوحة التحكم -->
+      <div id="control-panel-page" class="page hidden">
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <div class="logo logo-control-panel"></div>
+            <h1 class="text-2xl font-bold text-blue-700">iframe trindSky</h1>
+          </div>
+          <div class="flex gap-2">
+            <button id="back-to-site" class="button outline">العودة إلى الموقع</button>
+            <button id="logout" class="button destructive">تسجيل الخروج</button>
+          </div>
+        </header>
+
+        <main class="container mx-auto p-6">
+          <div class="grid grid-cols-1 gap-6">
+            <!-- بطاقة إدارة الرابط -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">إدراج الموقع</h3>
+                <p class="card-description">أدخل رابط الموقع الذي تريد عرضه في الإطار</p>
+              </div>
+              <div class="card-content">
+                <form id="url-form" class="space-y-4">
+                  <div class="flex flex-col space-y-2">
+                    <label for="iframe-url" class="font-medium">رابط الموقع</label>
+                    <div class="flex gap-2">
+                      <input
+                        id="iframe-url"
+                        type="text"
+                        class="input flex-grow"
+                        placeholder="https://example.com"
+                      />
+                      <button type="submit" class="button primary">
+                        <span id="url-spinner" class="spinner hidden"></span>
+                        تطبيق
+                      </button>
+                      <button 
+                        type="button" 
+                        id="clear-url" 
+                        class="button destructive"
+                        title="حذف الرابط"
+                      >
+                        <span id="clear-url-spinner" class="spinner hidden"></span>
+                        <svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      </button>
+                    </div>
+                    <p class="text-sm text-gray-500">
+                      أدخل الرابط كاملاً بما في ذلك http:// أو https://
+                    </p>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            <!-- بطاقة بيانات الإعدادات الحالية -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">الإعدادات الحالية</h3>
+                <p class="card-description">معلومات حول الرابط الحالي</p>
+              </div>
+              <div class="card-content">
+                <div class="space-y-4">
+                  <div class="flex flex-col space-y-2">
+                    <p><strong>حالة الرابط:</strong> <span id="url-status">غير محدد</span></p>
+                    <p><strong>الرابط الحالي:</strong> <span id="current-url">لا يوجد رابط محدد</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <footer class="bg-white p-4 text-center text-gray-500 text-sm">
+          &copy; <span id="current-year"></span> Trindsky - All rights reserved
+        </footer>
+      </div>
+    </div>
+
+    <!-- إضافة مكتبة Toastify للإشعارات -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/iframe.js"></script>
+    <script src="js/app.js"></script>
   </body>
 </html>
