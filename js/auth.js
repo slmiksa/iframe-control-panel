@@ -44,30 +44,32 @@ function setupLoginForm() {
   const passwordInput = document.getElementById('password');
   const loginSpinner = document.getElementById('login-spinner');
   
-  loginForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const username = usernameInput.value;
-    const password = passwordInput.value;
-    
-    // عرض مؤشر التحميل
-    loginSpinner.classList.remove('hidden');
-    
-    // محاكاة تأخير الشبكة
-    setTimeout(() => {
-      const success = login(username, password);
+  if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+      e.preventDefault();
       
-      if (success) {
-        showToast('تم تسجيل الدخول بنجاح', 'success');
-        navigateTo('control-panel');
-      } else {
-        showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
-      }
+      const username = usernameInput.value;
+      const password = passwordInput.value;
       
-      // إخفاء مؤشر التحميل
-      loginSpinner.classList.add('hidden');
-    }, 500);
-  });
+      // عرض مؤشر التحميل
+      loginSpinner.classList.remove('hidden');
+      
+      // محاكاة تأخير الشبكة
+      setTimeout(() => {
+        const success = login(username, password);
+        
+        if (success) {
+          showToast('تم تسجيل الدخول بنجاح', 'success');
+          navigateTo('control-panel');
+        } else {
+          showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
+        }
+        
+        // إخفاء مؤشر التحميل
+        loginSpinner.classList.add('hidden');
+      }, 500);
+    });
+  }
 }
 
 // إعداد زر تسجيل الخروج

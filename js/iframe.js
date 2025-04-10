@@ -42,12 +42,15 @@ function updateIframeDisplay() {
     logo.className = 'logo logo-giant';
     welcomeMessage.appendChild(logo);
     
-    // إضافة عنوان
+    // إضافة العنوان
     const heading = document.createElement('h2');
     heading.textContent = 'لم يتم تحديد رابط بعد. يرجى تسجيل الدخول لإضافة رابط.';
     welcomeMessage.appendChild(heading);
     
     iframeContainer.appendChild(welcomeMessage);
+    
+    // نضمن أن الشعار يظهر بشكل صحيح
+    setTimeout(() => setupLogos(), 0);
   }
 }
 
@@ -144,7 +147,8 @@ function setupUrlForm() {
       
       try {
         await setIframeUrl('');
-        urlInput.value = '';
+        if (urlInput) urlInput.value = '';
+        if (clearUrlButton) clearUrlButton.disabled = true;
         showToast('تم حذف الرابط وعرض الصفحة البيضاء', 'success');
         navigateTo('home');
       } catch (error) {

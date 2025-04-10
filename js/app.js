@@ -19,6 +19,11 @@ function navigateTo(pageName) {
     navigateTo('login');
     return;
   }
+  
+  // تحديث عرض الشعار في حال كان الانتقال للصفحة الرئيسية
+  if (pageName === 'home') {
+    updateIframeDisplay();
+  }
 }
 
 // عرض إشعار
@@ -62,6 +67,24 @@ function setCurrentYear() {
   }
 }
 
+// إضافة الشعار إلى عناصر القالب
+function setupLogos() {
+  // البحث عن جميع عناصر الشعار
+  const logos = document.querySelectorAll('.logo');
+  
+  // إضافة صورة الشعار إلى كل عنصر
+  logos.forEach(logo => {
+    const img = document.createElement('img');
+    img.src = 'assets/logo.png';
+    img.alt = 'iframe trindSky Logo';
+    img.className = 'logo-image';
+    
+    // تفريغ العنصر أولاً (لتجنب تكرار الصور)
+    logo.innerHTML = '';
+    logo.appendChild(img);
+  });
+}
+
 // تهيئة التطبيق عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
   // التحقق من حالة تسجيل الدخول
@@ -69,6 +92,9 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // تحميل URL المحفوظ
   loadSavedUrl();
+  
+  // إعداد الشعارات
+  setupLogos();
   
   // تحديث عرض iframe
   updateIframeDisplay();
@@ -107,6 +133,16 @@ document.addEventListener('click', function(e) {
   if (e.target.matches('[href*="login"], [data-link="login"]')) {
     e.preventDefault();
     navigateTo('login');
+  }
+  
+  // البحث عن الروابط المؤدية إلى صفحة لوحة التحكم
+  if (e.target.matches('[href*="control-panel"], [data-link="control-panel"]')) {
+    e.preventDefault();
+    if (isLoggedIn) {
+      navigateTo('control-panel');
+    } else {
+      navigateTo('login');
+    }
   }
 });
 
